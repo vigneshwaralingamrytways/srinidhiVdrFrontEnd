@@ -1,0 +1,7 @@
+{
+    "api": "SRIPATHIBackEndLive",
+    "ui": "/SripathiDigitalRepository",
+    "downloadLink": "http://demo2.rytways.com/downloads/SRIPATHI",
+    "proxy": "http://demo2.rytways.com:9090/"
+  }
+  
