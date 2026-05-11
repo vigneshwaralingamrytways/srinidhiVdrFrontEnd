@@ -13,37 +13,39 @@ export default function DashboardPage({ user, onLogout, onSelectCompany }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterValue, setFilterValue] = useState("All");
   const history = useHistory();
-  const loginUserId = parseFloat(localStorage.getItem("userId"));
-  const loginUser = parseFloat(localStorage.getItem("roleId"));
+  const userId = parseFloat(localStorage.getItem("userId"));
+  const roleId = parseFloat(localStorage.getItem("roleId"));
   const moduleId = useSelector((state) => state.sideBar.moduleId);
 
   // ? SAME API AS SEARCH PAGE
   const loadDataRoomList = async () => {
     setLoading(true);
     try {
+      console.log(" roleid:", roleId, "userId", userId)
+
       const result =
-        loginUser === 2
+        roleId === 2
           ? await post(api + "/documentTypeMaster/documentTypeMaster", {
-              documentTypeId: null,
-            })
+            documentTypeId: null,
+          })
           : await post(api + "/docUserMaster/getListByUserId", {
-              userId: loginUserId,
-              documentTypeId: null,
-            });
+            userId: userId,
+            documentTypeId: null,
+          });
 
       if (result && Array.isArray(result)) {
         const formatted =
-          loginUser === 2
+          roleId === 2
             ? result.map((item, index) => ({
-                sno: index + 1,
-                name: item.documentType,
-                id: item.documentTypeId,
-              }))
+              sno: index + 1,
+              name: item.documentType,
+              id: item.documentTypeId,
+            }))
             : result.map((item, index) => ({
-                sno: index + 1,
-                name: item.documentTypeMaster.documentType,
-                id: item.documentTypeMaster.documentTypeId,
-              }));
+              sno: index + 1,
+              name: item.documentTypeMaster.documentType,
+              id: item.documentTypeMaster.documentTypeId,
+            }));
 
         setCompanies(formatted);
       } else {
@@ -65,8 +67,8 @@ export default function DashboardPage({ user, onLogout, onSelectCompany }) {
   );
 
   const months = [
-    "Jan","Feb","Mar","Apr","May","Jun",
-    "Jul","Aug","Sep","Oct","Nov","Dec",
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
   ];
   const getMonthLabel = (index) => {
     const d = new Date();

@@ -114,20 +114,25 @@ function Contacts() {
     //   }));
     //   setMenuItems(menus);
     // }
-    setWaiting(true);
-    const process = await get(api + "/processMaster/getAllProcess");
-    console.table(process)
-    if (response.ok && Array.isArray(process)) {
-      const menus = process.map((item) => ({
-        title: (item.processName || item.process?.processName)?.toUpperCase(),
-        processId: item.processId || item.process?.processId,
-        processPath: item.processPath || item.process?.processPath,
-        icon: getIconForProcess(item.processName || item.process?.processName || ""),
-      }));
-      console.log("menus", menus)
-      setMenuItems(menus);
+    try {
+      setWaiting(true);
+      const process = await get(api + "/processMaster/getAllProcess");
+      console.table(process)
+      if (response.ok) {
+        const menus = process.map((item) => ({
+          title: (item.processName || item.process?.processName)?.toUpperCase(),
+          processId: item.processId || item.process?.processId,
+          processPath: item.processPath || item.process?.processPath,
+          icon: getIconForProcess(item.processName || item.process?.processName || ""),
+        }));
+        console.log("menus", menus)
+        setMenuItems(menus);
+      }
+      setWaiting(false);
     }
-    setWaiting(false);
+    catch (e) {
+      console.log(" eror", e)
+    }
   }, [post, response, role, userId]);
 
   useEffect(() => {
@@ -140,9 +145,7 @@ function Contacts() {
       })
     );
   }, []);
-  useEffect(() => {
-    loadInitialData();
-  }, []);
+
   // Route check AFTER all hooks
   const currentPath = history.location.pathname;
   const isMainPage = currentPath === "/" || currentPath === "/login" || currentPath === "/main";

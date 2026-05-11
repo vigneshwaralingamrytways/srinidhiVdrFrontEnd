@@ -24,26 +24,26 @@ export default function DashboardPage({ user, onLogout, onSelectCompany }) {
       const result =
         loginUser === 1
           ? await post(api + "/documentTypeMaster/documentTypeMaster", {
-              documentTypeId: null,
-            })
+            documentTypeId: null,
+          })
           : await post(api + "/docUserMaster/getListByUserId", {
-              userId: loginUserId,
-              documentTypeId: null,
-            });
-
+            userId: loginUserId,
+            documentTypeId: null,
+          });
+      console.table(result)
       if (result && Array.isArray(result)) {
         const formatted =
           loginUser === 1
             ? result.map((item, index) => ({
-                sno: index + 1,
-                name: item.documentType,
-                id: item.documentTypeId,
-              }))
+              sno: index + 1,
+              name: item.documentType,
+              id: item.documentTypeId,
+            }))
             : result.map((item, index) => ({
-                sno: index + 1,
-                name: item.documentTypeMaster.documentType,
-                id: item.documentTypeMaster.documentTypeId,
-              }));
+              sno: index + 1,
+              name: item.documentTypeMaster.documentType,
+              id: item.documentTypeMaster.documentTypeId,
+            }));
 
         setCompanies(formatted);
       } else {
@@ -65,8 +65,8 @@ export default function DashboardPage({ user, onLogout, onSelectCompany }) {
   );
 
   const months = [
-    "Jan","Feb","Mar","Apr","May","Jun",
-    "Jul","Aug","Sep","Oct","Nov","Dec",
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
   ];
   const getMonthLabel = (index) => {
     const d = new Date();

@@ -37,7 +37,7 @@ export default function DocumentDetail({ user, onLogout }) {
 
     // -- upload form state --------------------------------------------------
     const [file, setFile] = useState(null);
-    const [remark, setRemark] = useState("");
+    const [remarks, setRemark] = useState("");
     const [dragActive, setDragActive] = useState(false);
     const [editingIndex, setEditingIndex] = useState(null);
     const [uploading, setUploading] = useState(false);
@@ -118,7 +118,7 @@ export default function DocumentDetail({ user, onLogout }) {
                     result.map((item) => ({
                         ...item,
                         name: item.fileName,
-                        remark: item.remarks,
+                        remarks: item.remarks,
                         comments: [],
                         downloadHistory: [],
                     }))
@@ -142,7 +142,7 @@ export default function DocumentDetail({ user, onLogout }) {
             setUploading(true);
             const formData = new FormData();
             formData.append("file", file);
-            formData.append("remarks", remark);
+            formData.append("remarks", remarks);
             formData.append("transactionId", company?.id || 0);
             formData.append("documentType", doc?.name || "General");
             formData.append("folderCategoryName", "RepositoryDocument");
@@ -156,7 +156,7 @@ export default function DocumentDetail({ user, onLogout }) {
                     {
                         ...uploaded,
                         name: uploaded.fileName,
-                        remark: uploaded.remarks,
+                        remarks: uploaded.remarks,
                         comments: [],
                         downloadHistory: [],
                     },
@@ -175,7 +175,7 @@ export default function DocumentDetail({ user, onLogout }) {
 
     const handleUpdate = () => {
         const updated = [...records];
-        updated[editingIndex].remark = remark;
+        updated[editingIndex].remarks = remarks;
         setRecords(updated);
         resetForm();
         setEditingIndex(null);
@@ -385,12 +385,16 @@ export default function DocumentDetail({ user, onLogout }) {
         if (editingIndex === null) return;
 
         const rowData = records[editingIndex];
-
         const updatedPayload = {
-            ...rowData,
-            remarks: remark
-        };
-
+            reportDocId: rowData.reportDocId,
+            transactionId: rowData.transactionId,
+            fileName: rowData.fileName,
+            generatedFileName: rowData.generatedFileName,
+            filePath: rowData.filePath,
+            deleteFilePath: rowData.deleteFilePath,
+            type: rowData.type,
+            remarks: remarks,
+        }
         try {
             setUploading(true);
             const result = await post(api + "/documentTransaction/updateReportDoc", updatedPayload);
@@ -400,7 +404,7 @@ export default function DocumentDetail({ user, onLogout }) {
                 updatedRecords[editingIndex] = {
                     ...result,
                     name: result.fileName,
-                    remark: result.remarks,
+                    remarks: result.remarks,
                     comments: rowData.comments,
                     downloadHistory: rowData.downloadHistory
                 };
@@ -820,7 +824,7 @@ export default function DocumentDetail({ user, onLogout }) {
                                             >{r.name}</span>,
 
                                             <span style={{ color: "rgba(255,255,255,0.55)", fontSize: "12px" }}>
-                                                {r.remark || ""}
+                                                {r.remarks || ""}
                                             </span>,
 
                                             <FaEye
@@ -863,7 +867,7 @@ export default function DocumentDetail({ user, onLogout }) {
                                             // </div>,
 
                                             // <FaEdit
-                                            //     title="Edit remark"
+                                            //     title="Edit remarks"
                                             //     style={{ cursor: "pointer", color: "#38bdf8" }}
                                             //     onClick={() => handleEdit(ai)}
                                             // />,

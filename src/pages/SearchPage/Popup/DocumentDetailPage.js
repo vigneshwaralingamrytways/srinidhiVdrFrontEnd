@@ -38,7 +38,7 @@ export default function DocumentDetail({ user, onLogout }) {
 
     // -- upload form state --------------------------------------------------
     const [file, setFile] = useState(null);
-    const [remark, setRemark] = useState("");
+    const [remarks, setRemark] = useState("");
     const [dragActive, setDragActive] = useState(false);
     const [editingIndex, setEditingIndex] = useState(null);
     const [uploading, setUploading] = useState(false);
@@ -109,13 +109,13 @@ export default function DocumentDetail({ user, onLogout }) {
         try {
             setLoading(true);
             const result = await post(api + "/documentTransaction/getListByTransacId", {
-                transactionId: company?.id,
+                transactionId: doc?.subFolderMaster?.subFolderId,
             });
             if (response.ok && Array.isArray(result)) {
                 const baseRecords = result.map((item) => ({
                     ...item,
                     name: item.fileName,
-                    remark: item.remarks,
+                    remarks: item.remarks,
                     comments: [],
                     downloadHistory: [],
                 }));
@@ -166,11 +166,12 @@ export default function DocumentDetail({ user, onLogout }) {
             setUploading(true);
             const formData = new FormData();
             formData.append("file", file);
-            formData.append("remarks", remark);
-            formData.append("transactionId", company?.id || 0);
+            formData.append("remarks", remarks);
+            formData.append("transactionId", doc?.subFolderMaster?.subFolderId || 0);
+
             formData.append("documentType", doc?.name || "General");
-            formData.append("folderCategoryName", "RepositoryDocument");
-            formData.append("subFolderCategoryName", "GeneralSubFolder");
+            formData.append("folderCategoryName", doc?.folderMaster?.folderCategoryName || "folder");
+            formData.append("subFolderCategoryName", doc?.subFolderMaster?.subFolderCategoryName || "SubFolder");
 
             const result = await post(api + "/documentTransaction/uploadFile", formData);
             if (response.ok && result?.retValues?.status === 1) {
@@ -180,7 +181,7 @@ export default function DocumentDetail({ user, onLogout }) {
                     {
                         ...uploaded,
                         name: uploaded.fileName,
-                        remark: uploaded.remarks,
+                        remarks: uploaded.remarks,
                         comments: [],
                         downloadHistory: [],
                     },
@@ -195,11 +196,11 @@ export default function DocumentDetail({ user, onLogout }) {
         } finally {
             setUploading(false);
         }
-    };  
+    };
 
     // const handleUpdate = () => {
     //     const updated = [...records];
-    //     updated[editingIndex].remark = remark;
+    //     updated[editingIndex].remarks = remarks;
     //     setRecords(updated);
     //     resetForm();
     //     setEditingIndex(null);
@@ -397,32 +398,43 @@ export default function DocumentDetail({ user, onLogout }) {
             alert("An error occurred while deleting the file.");
         }
     };
-const setupEdit = (index) => {
-    const rowData = records[index];
-    setEditingIndex(index);
-    setRemark(rowData.remark || "");
-}
+    const setupEdit = (index) => {
+        const rowData = records[index];
+        setEditingIndex(index);
+        setRemark(rowData.remarks || "");
+    }
 
-    const handleUpdate= async () => {
+    const handleUpdate = async () => {
         if (editingIndex === null) return;
 
         const rowData = records[editingIndex];
 
         const updatedPayload = {
             ...rowData,
-            remarks: remark
+            remarks: remarks
         };
 
         try {
             setUploading(true);
+            const updatedPayload = {
+                reportDocId: rowData.reportDocId,
+                transactionId: rowData.transactionId,
+                fileName: rowData.fileName,
+                generatedFileName: rowData.generatedFileName,
+                filePath: rowData.filePath,
+                deleteFilePath: rowData.deleteFilePath,
+                type: rowData.type,
+                remarks: remarks,
+            }
+            console.log(" valeu for update", updatedPayload)
             const result = await post(api + "/documentTransaction/updateReportDoc", updatedPayload);
-
+            console.log("result fopr update ", result)
             if (response.ok) {
                 const updatedRecords = [...records];
                 updatedRecords[editingIndex] = {
                     ...result,
                     name: result.fileName,
-                    remark: result.remarks,
+                    remarks: result.remarks,
                     comments: rowData.comments,
                     downloadHistory: rowData.downloadHistory
                 };
@@ -441,7 +453,7 @@ const setupEdit = (index) => {
             setUploading(false);
         }
     };
-     const handleDrop = (e) => {
+    const handleDrop = (e) => {
         e.preventDefault();
         setDragActive(false);
         if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]);
@@ -835,7 +847,7 @@ const setupEdit = (index) => {
                     </div>
 
                     <textarea
-                        value={remark}
+                        value={remarks}
                         onChange={(e) => setRemark(e.target.value)}
                         placeholder="Enter remarks"
                         style={styles.remarksTextarea}
@@ -877,7 +889,7 @@ const setupEdit = (index) => {
                                             >{r.name}</span>,
 
                                             <span style={{ color: "rgba(255,255,255,0.55)", fontSize: "12px" }}>
-                                                {r.remark || ""}
+                                                {r.remarks || ""}
                                             </span>,
 
                                             <FaEye
@@ -920,7 +932,7 @@ const setupEdit = (index) => {
                                             </div>,
 
                                             <FaEdit
-                                                title="Edit remark"
+                                                title="Edit remarks"
                                                 style={{ cursor: "pointer", color: "#38bdf8" }}
                                                 onClick={() => setupEdit(ai)}
                                             />,
