@@ -1,7 +1,7 @@
 {
   "files": {
     "main.css": "/SrinidhiVdr/static/css/main.410c3099.css",
-    "main.js": "/SrinidhiVdr/static/js/main.5b8b6bae.js",
+    "main.js": "/SrinidhiVdr/static/js/main.c0c4c6cc.js",
     "static/css/967.4799c054.chunk.css": "/SrinidhiVdr/static/css/967.4799c054.chunk.css",
     "static/js/967.d551cdf0.chunk.js": "/SrinidhiVdr/static/js/967.d551cdf0.chunk.js",
     "static/css/205.533cb041.chunk.css": "/SrinidhiVdr/static/css/205.533cb041.chunk.css",
@@ -21,7 +21,7 @@
     "static/css/702.533cb041.chunk.css": "/SrinidhiVdr/static/css/702.533cb041.chunk.css",
     "static/js/702.430be3b8.chunk.js": "/SrinidhiVdr/static/js/702.430be3b8.chunk.js",
     "static/css/474.5af5c90d.chunk.css": "/SrinidhiVdr/static/css/474.5af5c90d.chunk.css",
-    "static/js/474.a3f25464.chunk.js": "/SrinidhiVdr/static/js/474.a3f25464.chunk.js",
+    "static/js/474.5ee0c36a.chunk.js": "/SrinidhiVdr/static/js/474.5ee0c36a.chunk.js",
     "static/css/621.5af5c90d.chunk.css": "/SrinidhiVdr/static/css/621.5af5c90d.chunk.css",
     "static/js/621.76528247.chunk.js": "/SrinidhiVdr/static/js/621.76528247.chunk.js",
     "static/css/806.5af5c90d.chunk.css": "/SrinidhiVdr/static/css/806.5af5c90d.chunk.css",
@@ -37,11 +37,11 @@
     "static/css/441.6d440897.chunk.css": "/SrinidhiVdr/static/css/441.6d440897.chunk.css",
     "static/js/441.26b05a31.chunk.js": "/SrinidhiVdr/static/js/441.26b05a31.chunk.js",
     "static/css/260.5af5c90d.chunk.css": "/SrinidhiVdr/static/css/260.5af5c90d.chunk.css",
-    "static/js/260.552a6672.chunk.js": "/SrinidhiVdr/static/js/260.552a6672.chunk.js",
+    "static/js/260.a64a8fa7.chunk.js": "/SrinidhiVdr/static/js/260.a64a8fa7.chunk.js",
     "static/css/999.5af5c90d.chunk.css": "/SrinidhiVdr/static/css/999.5af5c90d.chunk.css",
-    "static/js/999.c7603d93.chunk.js": "/SrinidhiVdr/static/js/999.c7603d93.chunk.js",
+    "static/js/999.c35df994.chunk.js": "/SrinidhiVdr/static/js/999.c35df994.chunk.js",
     "static/css/86.5af5c90d.chunk.css": "/SrinidhiVdr/static/css/86.5af5c90d.chunk.css",
-    "static/js/86.ffd15126.chunk.js": "/SrinidhiVdr/static/js/86.ffd15126.chunk.js",
+    "static/js/86.2509c256.chunk.js": "/SrinidhiVdr/static/js/86.2509c256.chunk.js",
     "static/css/711.5af5c90d.chunk.css": "/SrinidhiVdr/static/css/711.5af5c90d.chunk.css",
     "static/js/711.9132a124.chunk.js": "/SrinidhiVdr/static/js/711.9132a124.chunk.js",
     "static/css/98.5af5c90d.chunk.css": "/SrinidhiVdr/static/css/98.5af5c90d.chunk.css",
@@ -70,7 +70,7 @@
     "static/media/Srilogo.png": "/SrinidhiVdr/static/media/Srilogo.08d497d780a2888df580.png",
     "index.html": "/SrinidhiVdr/index.html",
     "main.410c3099.css.map": "/SrinidhiVdr/static/css/main.410c3099.css.map",
-    "main.5b8b6bae.js.map": "/SrinidhiVdr/static/js/main.5b8b6bae.js.map",
+    "main.c0c4c6cc.js.map": "/SrinidhiVdr/static/js/main.c0c4c6cc.js.map",
     "967.4799c054.chunk.css.map": "/SrinidhiVdr/static/css/967.4799c054.chunk.css.map",
     "967.d551cdf0.chunk.js.map": "/SrinidhiVdr/static/js/967.d551cdf0.chunk.js.map",
     "205.533cb041.chunk.css.map": "/SrinidhiVdr/static/css/205.533cb041.chunk.css.map",
@@ -90,7 +90,7 @@
     "702.533cb041.chunk.css.map": "/SrinidhiVdr/static/css/702.533cb041.chunk.css.map",
     "702.430be3b8.chunk.js.map": "/SrinidhiVdr/static/js/702.430be3b8.chunk.js.map",
     "474.5af5c90d.chunk.css.map": "/SrinidhiVdr/static/css/474.5af5c90d.chunk.css.map",
-    "474.a3f25464.chunk.js.map": "/SrinidhiVdr/static/js/474.a3f25464.chunk.js.map",
+    "474.5ee0c36a.chunk.js.map": "/SrinidhiVdr/static/js/474.5ee0c36a.chunk.js.map",
     "621.5af5c90d.chunk.css.map": "/SrinidhiVdr/static/css/621.5af5c90d.chunk.css.map",
     "621.76528247.chunk.js.map": "/SrinidhiVdr/static/js/621.76528247.chunk.js.map",
     "806.5af5c90d.chunk.css.map": "/SrinidhiVdr/static/css/806.5af5c90d.chunk.css.map",
@@ -106,11 +106,11 @@
     "441.6d440897.chunk.css.map": "/SrinidhiVdr/static/css/441.6d440897.chunk.css.map",
     "441.26b05a31.chunk.js.map": "/SrinidhiVdr/static/js/441.26b05a31.chunk.js.map",
     "260.5af5c90d.chunk.css.map": "/SrinidhiVdr/static/css/260.5af5c90d.chunk.css.map",
-    "260.552a6672.chunk.js.map": "/SrinidhiVdr/static/js/260.552a6672.chunk.js.map",
+    "260.a64a8fa7.chunk.js.map": "/SrinidhiVdr/static/js/260.a64a8fa7.chunk.js.map",
     "999.5af5c90d.chunk.css.map": "/SrinidhiVdr/static/css/999.5af5c90d.chunk.css.map",
-    "999.c7603d93.chunk.js.map": "/SrinidhiVdr/static/js/999.c7603d93.chunk.js.map",
+    "999.c35df994.chunk.js.map": "/SrinidhiVdr/static/js/999.c35df994.chunk.js.map",
     "86.5af5c90d.chunk.css.map": "/SrinidhiVdr/static/css/86.5af5c90d.chunk.css.map",
-    "86.ffd15126.chunk.js.map": "/SrinidhiVdr/static/js/86.ffd15126.chunk.js.map",
+    "86.2509c256.chunk.js.map": "/SrinidhiVdr/static/js/86.2509c256.chunk.js.map",
     "711.5af5c90d.chunk.css.map": "/SrinidhiVdr/static/css/711.5af5c90d.chunk.css.map",
     "711.9132a124.chunk.js.map": "/SrinidhiVdr/static/js/711.9132a124.chunk.js.map",
     "98.5af5c90d.chunk.css.map": "/SrinidhiVdr/static/css/98.5af5c90d.chunk.css.map",
@@ -129,6 +129,6 @@
   },
   "entrypoints": [
     "static/css/main.410c3099.css",
-    "static/js/main.5b8b6bae.js"
+    "static/js/main.c0c4c6cc.js"
   ]
 }

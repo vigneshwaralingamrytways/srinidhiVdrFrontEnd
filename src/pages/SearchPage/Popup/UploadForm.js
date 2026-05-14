@@ -5,18 +5,23 @@ import { DocIcon, DocEmoji } from "./DocIcon";
 import { FaArrowLeft, FaBuilding, FaDownload, FaPlus, FaTimes, FaSearch } from "react-icons/fa";
 import { useLocation, useHistory } from "react-router-dom";
 import { useFetch, api } from "../../../Components/CommonImports/CommonImports";
-
+import { saveAs } from "file-saver";
 // --- CSV export ---------------------------------------------------------------
-function exportToExcel(rows, filename = "Documents.csv") {
-    const headers = ["Document Category", "Sub Category", "Created Date", "File Type"];
+function exportToExcel(rows, filename = "Document_Report.csv") {
+    if (!rows || rows.length === 0) {
+        alert("No data to export");
+        return;
+    }
+    const headers = ["S.No", "Document Type", "Folder Name", "Sub Folder Name"];
     const csvRows = [
         headers.join(","),
-        ...rows.map((doc) =>
+        ...rows.map((doc, index) =>
             [
+                index + 1,
                 `"${(doc.category || "").replace(/"/g, '""')}"`,
                 `"${(doc.subCategory || "").replace(/"/g, '""')}"`,
                 `"${doc.createdDate ? new Date(doc.createdDate).toLocaleDateString("en-GB") : ""}"`,
-                `"${(doc.type || "").replace(/"/g, '""')}"`,
+
             ].join(",")
         ),
     ];
@@ -73,12 +78,12 @@ function CategoryBadge({ label }) {
 }
 
 // --- Add Document Popup -------------------------------------------------------
-function AddDocumentPopup({ docs, onClose, onSave }) {
-    const uniqueNames = [...new Set(docs.map((d) => d.documentName).filter(Boolean))];
-    const uniqueSubCats = [...new Set(docs.map((d) => d.subCategory).filter(Boolean))];
-
+function AddDocumentPopup({ folders,
+    subFolders, onClose, onSave, docs }) {
+    // const uniqueNames = [...new Set(docs.map((d) => d.category).filter(Boolean))];
+    // const uniqueSubCats = [...new Set(docs.map((d) => d.subCategory).filter(Boolean))];
     const [form, setForm] = useState({
-        documentName: "",
+        category: "",
         subCategory: "",
         createdDate: new Date().toISOString().split("T")[0],
     });
@@ -86,7 +91,7 @@ function AddDocumentPopup({ docs, onClose, onSave }) {
 
     const validate = () => {
         const e = {};
-        if (!form.documentName) e.documentName = "Required";
+        if (!form.category) e.category = "Required";
         if (!form.subCategory) e.subCategory = "Required";
         if (!form.createdDate) e.createdDate = "Required";
         setErrors(e);
@@ -165,22 +170,28 @@ function AddDocumentPopup({ docs, onClose, onSave }) {
                 </button>
 
                 <div style={{ fontSize: "17px", fontWeight: 700, color: "#fff", marginBottom: "24px", letterSpacing: "-0.02em" }}>
-                    Add Document
+                    Add Documents
                 </div>
 
                 <div style={{ marginBottom: "18px" }}>
-                    <label style={labelStyle}>Document Name</label>
+                    <label style={labelStyle}>Category</label>
                     <select
-                        value={form.documentName}
-                        onChange={(e) => setForm({ ...form, documentName: e.target.value })}
+                        value={form.category}
+                        onChange={(e) =>
+                            setForm({
+                                ...form,
+                                category: e.target.value,
+                                subCategory: "",
+                            })
+                        }
                         style={{ ...fieldStyle, cursor: "pointer" }}
                     >
                         <option value=""> Select </option>
-                        {uniqueNames.map((n) => (
+                        {folders.map((n) => (
                             <option key={n} value={n} style={{ background: "#1a1a2e" }}>{n}</option>
                         ))}
                     </select>
-                    {errors.documentName && <span style={{ color: "#ff6b6b", fontSize: "11px" }}>{errors.documentName}</span>}
+                    {errors.category && <span style={{ color: "#ff6b6b", fontSize: "11px" }}>{errors.category}</span>}
                 </div>
 
                 <div style={{ marginBottom: "18px" }}>
@@ -191,8 +202,23 @@ function AddDocumentPopup({ docs, onClose, onSave }) {
                         style={{ ...fieldStyle, cursor: "pointer" }}
                     >
                         <option value=""> Select </option>
-                        {uniqueSubCats.map((s) => (
+                        {/* {subFolders.map((s) => (
                             <option key={s} value={s} style={{ background: "#1a1a2e" }}>{s}</option>
+                        ))} */}
+                        {[
+                            ...new Set(
+                                docs
+                                    .filter((d) => d.category === form.category)
+                                    .map((d) => d.subCategory)
+                            ),
+                        ].map((s) => (
+                            <option
+                                key={s}
+                                value={s}
+                                style={{ background: "#1a1a2e" }}
+                            >
+                                {s}
+                            </option>
                         ))}
                     </select>
                     {errors.subCategory && <span style={{ color: "#ff6b6b", fontSize: "11px" }}>{errors.subCategory}</span>}
@@ -254,13 +280,13 @@ export default function DocumentsPage({ user, onLogout }) {
     const history = useHistory();
     const { post, response } = useFetch({ data: [] });
 
-    const storedCompany = sessionStorage.getItem("doc_company");
-    const [company, setCompany] = useState(
-        location.state?.company || (storedCompany ? JSON.parse(storedCompany) : null)
-    );
+    const [currentDoc, setCurrentDoc] = useState(location.state?.document);
+    // const [docs, setDocs] = useState(ocation.state?.document);
 
     // All hooks declared before any conditional return (Rules of Hooks)
     const [docs, setDocs] = useState([]);
+    const [folders, setFolders] = useState([]);
+    const [subFolders, setSubFolders] = useState([]);
     const [activeFilter, setActiveFilter] = useState("All");
     const [searchQuery, setSearchQuery] = useState("");
     const [loading, setLoading] = useState(false);
@@ -277,21 +303,22 @@ export default function DocumentsPage({ user, onLogout }) {
         }
     }, [searchOpen]);
 
-    // Guard: if company is missing, redirect back  placed AFTER all hooks
-    if (!company) {
+    // Guard: if doc is missing, redirect back  placed AFTER all hooks
+    if (!currentDoc) {
         history.replace("/search");
         return null;
     }
 
     const fetchDocuments = async (documentTypeId) => {
-        if (!documentTypeId) return;
+        // if (!documentTypeId) return;
+        console.log("--called")
         try {
             setLoading(true);
-            const result = await post(api + "/documentTransaction/documentTransaction", {
-                id: Math.random(),
-                loadTime: Date().toLocaleString(),
+            const result = await post(api + "/documentTransaction/getByDocumentTypeId", {
+                documentTypeId: documentTypeId
             });
 
+            console.table(result)
             if (response.ok && Array.isArray(result)) {
                 const filtered = result.filter(
                     (item) => item?.documentTypeMaster?.documentTypeId === documentTypeId
@@ -299,14 +326,15 @@ export default function DocumentsPage({ user, onLogout }) {
 
                 const mapped = filtered.map((item) => ({
                     ...item,
+
                     documentName:
                         item.documentName ||
                         item.name ||
                         item.documentTypeMaster?.documentType ||
                         "Untitled",
                     category: item.folderMaster?.folderCategoryName || "General",
-                    subCategory: item.subFolderMaster?.subFolderCategoryName || "General",
-                    createdDate: item.createdDate || item.createdOn || item.transactionDate,
+                    subCategory: item.subFolderMaster?.subFolderCategoryName || item?.subFolderCategoryName || "General",
+                    createdDate: item.createdDate || item.createdOn || item.transactionDate || item?.updatedOn,
                     type:
                         item.fileType ||
                         item.documentTypeMaster?.documentType ||
@@ -314,6 +342,8 @@ export default function DocumentsPage({ user, onLogout }) {
                 }));
 
                 setDocs(mapped);
+                setFolders([...new Set(mapped.map((d) => d.category))]);
+                setSubFolders([...new Set(mapped.map((d) => d.subCategory))]);
             } else {
                 setDocs([]);
             }
@@ -326,24 +356,39 @@ export default function DocumentsPage({ user, onLogout }) {
     };
 
     useEffect(() => {
-        if (company?.id) {
+        if (currentDoc?.documentTypeId) {
             setDocs([]);
             setActiveFilter("All");
             setSearchQuery("");
             setSearchOpen(false);
-            fetchDocuments(company.id);
-            sessionStorage.setItem("doc_company", JSON.stringify(company));
+            fetchDocuments(currentDoc.documentTypeId);
+            sessionStorage.setItem("doc", JSON.stringify(currentDoc));
         }
-    }, [company?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [currentDoc?.documentTypeId]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const allCategories = ["All", ...new Set(docs.map((d) => d.subCategory || "General"))];
 
+    // const filteredDocs = docs
+    //     .filter((d) => activeFilter === "All" || d.subCategory === activeFilter)
+    //     .filter((d) =>
+    //         searchQuery.trim() === "" ||
+    //         (d.documentName || "").toLowerCase().includes(searchQuery.trim().toLowerCase())
+    //     );
     const filteredDocs = docs
-        .filter((d) => activeFilter === "All" || d.subCategory === activeFilter)
-        .filter((d) =>
-            searchQuery.trim() === "" ||
-            (d.documentName || "").toLowerCase().includes(searchQuery.trim().toLowerCase())
-        );
+        .filter((d) => {
+            if (activeFilter !== "All" && d.subCategory !== activeFilter) {
+                return false;
+            }
+
+            const q = searchQuery.trim().toLowerCase();
+
+            if (!q) return true;
+
+            return (
+                (d.category || "").toLowerCase().includes(q) ||
+                (d.subCategory || "").toLowerCase().includes(q)
+            );
+        });
 
     const formatDate = (dateStr) => {
         if (!dateStr) return "-";
@@ -355,22 +400,64 @@ export default function DocumentsPage({ user, onLogout }) {
     };
 
     const handleOpenDocument = (doc) => {
+        console.log("docs===", doc)
         history.push({
             pathname: "/document-detail",
-            state: { document: doc, company },
+            state: { document: doc },
         });
     };
 
-    const handleAddSave = (formData) => {
-        const newDoc = {
-            documentName: formData.documentName,
-            subCategory: formData.subCategory,
-            createdDate: formData.createdDate,
-            category: "General",
-            type: "default",
-        };
-        setDocs((prev) => [newDoc, ...prev]);
-        setShowAddPopup(false);
+    // const handleAddSave = (formData) => {
+    //     const newDoc = {
+    //         documentName: formData.documentName,
+    //         subCategory: formData.subCategory,
+    //         createdDate: formData.createdDate,
+    //         category:formData.category|| "General",
+    //         type: "default",
+    //     };
+
+    //     setDocs((prev) => [newDoc, ...prev]);
+    //     setShowAddPopup(false);
+    // };
+    const handleAddSave = async (formData) => {
+        try {
+            const selectedDocSource = docs.find(
+                (d) => d.category === formData.category && d.subCategory === formData.subCategory
+            );
+            const payload = {
+                documentTypeId: currentDoc?.documentTypeId,
+                folderId: selectedDocSource?.folderId || null,
+                subFolderId: selectedDocSource?.subFolderId || null,
+                createdDate: formData.createdDate
+            };
+
+
+            console.log(" valeus for save  ", payload)
+            const result = await post(
+                api + "/documentTransaction/create",
+                payload
+            );
+
+            if (response.ok) {
+
+                const newDoc = {
+                    ...result,
+                    category: formData.category,
+                    subCategory: formData.subCategory,
+                    createdDate: formData.createdDate,
+                    type: "default",
+                };
+
+                setDocs((prev) => [newDoc, ...prev]);
+                setShowAddPopup(false);
+
+            } else {
+                console.log("save failed");
+            }
+
+        } catch (err) {
+            console.log("save error", err);
+        }
     };
 
     const styles = {
@@ -498,6 +585,21 @@ export default function DocumentsPage({ user, onLogout }) {
         letterSpacing: "0.03em",
     };
 
+    const handleExcel = async (rowData, fileName) => {
+        try {
+            const result = await post(api + "/documentTransaction/selectedExcelReport", rowData);
+
+            if (response.ok) {
+                const blob = await response.blob();
+                saveAs(blob, fileName);
+            } else {
+
+                console.log("fail to download", response);
+            }
+        } catch (err) {
+            console.log("errors,", err);
+        }
+    };
     return (
         <div style={styles.page}>
             <div style={styles.orb1} />
@@ -506,7 +608,7 @@ export default function DocumentsPage({ user, onLogout }) {
             <Navbar
                 user={user}
                 onLogout={onLogout}
-                breadcrumb={["Dashboard", company?.name || "Company", "Documents"]}
+                breadcrumb={["Dashboard", docs?.documentType || "Company", "Documents"]}
             />
 
             <div style={styles.body}>
@@ -522,7 +624,7 @@ export default function DocumentsPage({ user, onLogout }) {
                         </div>
                         <div>
                             <div style={{ color: "#fff", fontWeight: 700 }}>
-                                {company?.name || "Loading..."}
+                                {currentDoc?.documentType || currentDoc?.documentTypeMaster?.documentType || "Loading..."}
                             </div>
                             <div style={{ color: "rgba(255,255,255,0.5)" }}>
                                 {docs.length} documents
@@ -653,7 +755,7 @@ export default function DocumentsPage({ user, onLogout }) {
                         {/* Download CSV */}
                         <button
                             title="Download as CSV"
-                            onClick={() => exportToExcel(filteredDocs, `Documents_${company?.name || "export"}.csv`)}
+                            onClick={() => handleExcel(filteredDocs, `Documents_${currentDoc?.documentType || currentDoc?.documentTypeMaster?.documentType || "Export"}.xlsx`)}
                             style={{
                                 ...iconBtnBase,
                                 background: "rgba(32,201,151,0.12)",
@@ -752,9 +854,11 @@ export default function DocumentsPage({ user, onLogout }) {
 
             {showAddPopup && (
                 <AddDocumentPopup
-                    docs={docs}
+                    folders={folders}
+                    subFolders={subFolders}
                     onClose={() => setShowAddPopup(false)}
                     onSave={handleAddSave}
+                    docs={docs}
                 />
             )}
         </div>

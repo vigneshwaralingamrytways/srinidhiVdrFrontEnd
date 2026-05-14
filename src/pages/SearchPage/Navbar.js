@@ -1,9 +1,14 @@
 import { Octagon } from "lucide-react";
+import { useContext } from "react";
 import { FaSignOutAlt } from "react-icons/fa";
-import { useHistory } from "react-router-dom"; 
+import { useHistory } from "react-router-dom";
+import AuthContext from "../../store/auth-context";
 
 export default function Navbar() {
-   const history = useHistory();
+  const authCtx = useContext(AuthContext)
+  const isAdmin = authCtx.roleId == 1 ? true : false
+  console.log(" isAdmin", isAdmin, "roleId", authCtx.roleId)
+  const history = useHistory();
   const styles = {
     nav: {
       position: "sticky",
@@ -78,12 +83,12 @@ export default function Navbar() {
       <div style={styles.right}>
         <div
           style={styles.iconBtn}
-          onClick={() => history.push("/processModule")}
-             // ? SAME AS HOME ICON LOGIC
-          title="Go to Modules"
+          onClick={() => history.push(isAdmin ? "/processModule" : "/")}
+          // ? SAME AS HOME ICON LOGIC
+          title={isAdmin ? "Go to Modules" : "Go to Login"}
         >
           <FaSignOutAlt />
-          
+
         </div>
       </div>
     </nav>

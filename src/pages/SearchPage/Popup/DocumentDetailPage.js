@@ -21,6 +21,7 @@ import {
 import * as XLSX from "xlsx";
 import { useFetch, api } from "../../../Components/CommonImports/CommonImports";
 import AuthContext from "../../../store/auth-context";
+import { areIntervalsOverlappingWithOptions } from "date-fns/fp";
 
 // --- helpers ----------------------------------------------------------------
 const getFileExtension = (name) => (name || "").split(".").pop().toLowerCase();
@@ -33,9 +34,9 @@ export default function DocumentDetail({ user, onLogout }) {
     const history = useHistory();
     const { post, response, get } = useFetch({ data: [] });
 
-    const company = location.state?.company;
+    // const company = location.state?.company;
     const doc = location.state?.document;
-
+    const [isAllow, setIsAllow] = useState(false);
     // -- upload form state --------------------------------------------------
     const [file, setFile] = useState(null);
     const [remarks, setRemark] = useState("");
@@ -68,7 +69,7 @@ export default function DocumentDetail({ user, onLogout }) {
     const blobUrlRef = useRef(null);
 
     // -- guard --------------------------------------------------------------
-    if (!doc || !company) {
+    if (!doc) {
         history.replace("/documents");
         return null;
     }
@@ -109,21 +110,50 @@ export default function DocumentDetail({ user, onLogout }) {
         try {
             setLoading(true);
             const result = await post(api + "/documentTransaction/getListByTransacId", {
-                transactionId: doc?.subFolderMaster?.subFolderId,
+                transactionId: doc?.subFolderId,
             });
+            const res = await post(api + "/docUserMaster/getListByDocIdAndUserId", { userId: authCtx.userId, documentTypeId: doc?.documentTypeId })
+            console.log(" acces data", res, "userID", authCtx.userId, "docTypeId", doc?.documentTypeId)
+            if (res) {
+                const allowStatus = res.accesRight === "View / Upload";
+                setIsAllow(allowStatus);
+                console.log(" acces isAllow", isAllow)
+            }
             if (response.ok && Array.isArray(result)) {
                 const baseRecords = result.map((item) => ({
                     ...item,
+                    docsId: item.reportDocId,
                     name: item.fileName,
                     remarks: item.remarks,
                     comments: [],
                     downloadHistory: [],
                 }));
+                console.log(" basereocrd..", baseRecords)
 
                 setRecords(baseRecords);
 
                 baseRecords.forEach(async (record, index) => {
-                    if (!record.reportDocId) return;
+                    const reportDocId = record.reportDocId;
+                    if (!reportDocId) return;
+                    try {
+                        const commRes = await get(api + `/comments/getComments/${reportDocId}`);
+                        setRecords((prev) => {
+                            const newRecords = [...prev];
+                            if (newRecords[index]) {
+                                newRecords[index].comments = (commRes || []).map((c) => {
+                                    const dt = new Date(c.createdOn || new Date());
+                                    return {
+                                        text: c.comments,
+                                        date: dt.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) +
+                                            ", " + dt.toLocaleTimeString("en-GB", { hour12: true }),
+                                    };
+                                });
+                            }
+                            return newRecords;
+                        });
+                    } catch (e) {
+                        console.error(`Comment fetch failed for ${reportDocId}`, e);
+                    }
 
                     try {
                         const payload = {
@@ -153,7 +183,7 @@ export default function DocumentDetail({ user, onLogout }) {
         } finally {
             setLoading(false);
         }
-    }, [company?.id]);
+    }, [doc?.transactionId]);
 
     useEffect(() => { initialLoadData(); fetchDownloadHistory() }, [initialLoadData, authCtx.userId]);
 
@@ -167,7 +197,7 @@ export default function DocumentDetail({ user, onLogout }) {
             const formData = new FormData();
             formData.append("file", file);
             formData.append("remarks", remarks);
-            formData.append("transactionId", doc?.subFolderMaster?.subFolderId || 0);
+            formData.append("transactionId", doc?.transactionId || 0);
 
             formData.append("documentType", doc?.name || "General");
             formData.append("folderCategoryName", doc?.folderMaster?.folderCategoryName || "folder");
@@ -334,10 +364,17 @@ export default function DocumentDetail({ user, onLogout }) {
     // API: FETCH / SAVE COMMENTS
     // -----------------------------------------------------------------------
     const fetchComments = async (index) => {
-        const docsId = records[index]?.docsId;
-        if (!docsId) return;
+        // const docsId = records[index]?.docsId;
+        const currentRecord = records[commentPopup];
+        const docsId = currentRecord?.reportDocId;
+        console.log("Fetching comments for Index:", index, "DocsID:", docsId);
+        if (!docsId) {
+            console.error("docsId is missing for index", index);
+            return;
+        }
         try {
             const res = await get(api + `/comments/getComments/${docsId}`);
+            console.log("comment by docid", res)
             const updated = [...records];
             updated[index].comments = (res || []).map((c) => {
                 const dt = new Date(c.createdOn || new Date());
@@ -356,12 +393,15 @@ export default function DocumentDetail({ user, onLogout }) {
 
     const saveComment = async () => {
         if (!commentText.trim()) return;
-        const docsId = records[commentPopup]?.docsId;
+        const currentRecord = records[commentPopup];
+        const reportDocId = currentRecord?.reportDocId;
+        console.log("curent reord", currentRecord)
         try {
             const res = await post(api + "/comments/saveComments", {
-                docsId,
+                reportDocId: reportDocId,
                 comments: commentText,
             });
+            console.log(" saved commenst ", res)
             const updated = [...records];
             const now = new Date();
             updated[commentPopup].comments.push({
@@ -817,11 +857,14 @@ export default function DocumentDetail({ user, onLogout }) {
             <Navbar
                 user={user}
                 onLogout={onLogout}
-                breadcrumb={["Dashboard", company?.name || "Company", doc?.name || "Document"]}
+                breadcrumb={["Dashboard", doc?.name || "Company", doc?.name || "Document"]}
             />
 
             <div style={styles.body}>
-                <div style={styles.backBtn} onClick={() => history.push("/documents")}>
+                <div style={styles.backBtn} onClick={() => history.push("/documents", {
+                    document: doc,
+                    documentType:doc?.documentTypeMaster?.documentType
+                })}>
                     <FaArrowLeft /> Back
                 </div>
 
@@ -829,7 +872,7 @@ export default function DocumentDetail({ user, onLogout }) {
                     <div style={styles.title}>{doc?.name}</div>
 
                     {/* -- UPLOAD FORM ---------------------------------------- */}
-                    <div
+                    {isAllow && (<div
                         style={styles.dropZone}
                         onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
                         onDragLeave={() => setDragActive(false)}
@@ -844,16 +887,16 @@ export default function DocumentDetail({ user, onLogout }) {
                             id="fileInput" type="file" hidden
                             onChange={(e) => setFile(e.target.files[0])}
                         />
-                    </div>
+                    </div>)}
 
-                    <textarea
+                    {isAllow && (<textarea
                         value={remarks}
                         onChange={(e) => setRemark(e.target.value)}
                         placeholder="Enter remarks"
                         style={styles.remarksTextarea}
-                    />
+                    />)}
 
-                    <div style={styles.uploadActions}>
+                    {isAllow && (<div style={styles.uploadActions}>
                         <button style={styles.btnSecondary} onClick={() => { resetForm(); setEditingIndex(null); }}>
                             Cancel
                         </button>
@@ -864,7 +907,7 @@ export default function DocumentDetail({ user, onLogout }) {
                         >
                             {uploading ? "Saving" : editingIndex !== null ? "Update" : "Save"}
                         </button>
-                    </div>
+                    </div>)}
 
                     {/* -- TABLE ---------------------------------------------- */}
                     {loading ? (
@@ -875,10 +918,10 @@ export default function DocumentDetail({ user, onLogout }) {
                         <>
                             <div className="table-scroll-wrapper" style={styles.tableScrollWrapper}>
                                 <GlassTable
-                                    headers={["Doc Name", "Remarks", "View", "Comment", "Download", "History", "Edit", "Delete"]}
+                                    headers={["Doc Name", "Remarks", "View", "Comment", "Download", ...(isAllow ? ["History", "Edit", "Delete"] : [])]}
                                     rows={paginatedRecords.map((r, i) => {
                                         const ai = (currentPage - 1) * recordsPerPage + i;
-                                        return [
+                                        const rowData = [
                                             <span
                                                 title={r.name}
                                                 style={{
@@ -914,35 +957,41 @@ export default function DocumentDetail({ user, onLogout }) {
                                                 style={{ cursor: "pointer", color: "#a5b4fc" }}
                                                 onClick={() => handleDownload(ai)}
                                             />,
-
-                                            <div
-                                                title="View Downloaded history"
-                                                style={{ cursor: "pointer", display: "flex", alignItems: "center" }}
-                                                onClick={() => {
-                                                    setHistoryPopup(ai);
-                                                    fetchDownloadHistory(ai);
-                                                }}
-                                            >
-                                                <FaHistory style={{ color: "#facc15" }} />
-                                                {r.downloadHistory.length > 0 && (
-                                                    <span style={{ ...styles.commentBadge, background: "#facc15", color: "#1a1a2e" }}>
-                                                        {r.downloadHistory.length}
-                                                    </span>
-                                                )}
-                                            </div>,
-
-                                            <FaEdit
-                                                title="Edit remarks"
-                                                style={{ cursor: "pointer", color: "#38bdf8" }}
-                                                onClick={() => setupEdit(ai)}
-                                            />,
-
-                                            <FaTrash
-                                                title="Delete"
-                                                style={{ cursor: "pointer", color: "#ff6b6b" }}
-                                                onClick={() => deleteRecord(ai)}
-                                            />,
                                         ];
+                                        if (isAllow) {
+                                            rowData.push(
+                                                <div
+                                                    title="View Downloaded history"
+                                                    style={{ cursor: "pointer", display: "flex", alignItems: "center" }}
+                                                    onClick={() => {
+                                                        setHistoryPopup(ai);
+                                                        fetchDownloadHistory(ai);
+                                                    }}
+                                                >
+                                                    <FaHistory style={{ color: "#facc15" }} />
+                                                    {r.downloadHistory.length > 0 && (
+                                                        <span style={{ ...styles.commentBadge, background: "#facc15", color: "#1a1a2e" }}>
+                                                            {r.downloadHistory.length}
+                                                        </span>
+                                                    )}
+                                                </div>,
+
+                                                <FaEdit
+                                                    title="Edit remarks"
+                                                    style={{ cursor: "pointer", color: "#38bdf8" }}
+                                                    onClick={() => setupEdit(ai)}
+                                                />,
+
+                                                <FaTrash
+                                                    title="Delete"
+                                                    style={{ cursor: "pointer", color: "#ff6b6b" }}
+                                                    onClick={() => deleteRecord(ai)}
+                                                />,
+                                            );
+                                        }
+
+                                        return rowData;
+
                                     })}
                                 />
                             </div>

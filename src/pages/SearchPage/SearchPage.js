@@ -5,10 +5,10 @@ import { useHistory } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { moduleActions } from "../../store/module-slice";
 
-export default function DashboardPage({ user, onLogout, onSelectCompany }) {
-  const { post } = useFetch({ data: [] });
+export default function DashboardPage({ user, onLogout }) {
+  const { post, del, get, response } = useFetch({ data: [] });
   const dispatch = useDispatch();
-  const [companies, setCompanies] = useState([]);
+  const [documentTypeMaster, setDocumentTypeMaster] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterValue, setFilterValue] = useState("All");
@@ -21,37 +21,35 @@ export default function DashboardPage({ user, onLogout, onSelectCompany }) {
   const loadDataRoomList = async () => {
     setLoading(true);
     try {
-      const result =
-        loginUser === 1
-          ? await post(api + "/documentTypeMaster/documentTypeMaster", {
-            documentTypeId: null,
-          })
-          : await post(api + "/docUserMaster/getListByUserId", {
-            userId: loginUserId,
-            documentTypeId: null,
-          });
+      // const result =
+      //   loginUser === 1
+      //     ? await post(api + "/documentTypeMaster/documentTypeMaster", {
+      //       documentTypeId: null,
+      //     })
+      //     : await post(api + "/docUserMaster/getListByUserId", {
+      //       userId: loginUserId,
+      //       documentTypeId: null,
+      //     });
+      const result = await get(api + "/documentTypeMaster/documentTypeMaster")
       console.table(result)
       if (result && Array.isArray(result)) {
-        const formatted =
-          loginUser === 1
-            ? result.map((item, index) => ({
-              sno: index + 1,
-              name: item.documentType,
-              id: item.documentTypeId,
-            }))
-            : result.map((item, index) => ({
-              sno: index + 1,
-              name: item.documentTypeMaster.documentType,
-              id: item.documentTypeMaster.documentTypeId,
-            }));
+        const formatted = result.map((item, index) => {
+          return {
+            sno: index + 1,
+            name: item.documentType || "Untitled",
+            id: item.documentTypeId,
+            status: item.status
+          };
+        });
 
-        setCompanies(formatted);
+        setDocumentTypeMaster(formatted);
+
       } else {
-        setCompanies([]);
+        setDocumentTypeMaster([]);
       }
     } catch (error) {
       console.error("Error fetching data room list:", error);
-      setCompanies([]);
+      setDocumentTypeMaster([]);
     }
     setLoading(false);
   };
@@ -60,7 +58,7 @@ export default function DashboardPage({ user, onLogout, onSelectCompany }) {
     loadDataRoomList();
   }, []);
 
-  const filteredCompanies = companies.filter((item) =>
+  const filteredDocumentTypeMaster = documentTypeMaster.filter((item) =>
     item.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -266,7 +264,7 @@ export default function DashboardPage({ user, onLogout, onSelectCompany }) {
         {/* Header */}
         <div style={styles.sectionHeader}>
           <div style={styles.sectionTitle}>Data Room</div>
-          <span style={styles.badge}>{companies.length} records</span>
+          <span style={styles.badge}>{documentTypeMaster.length} records</span>
         </div>
 
         {/* Controls */}
@@ -296,8 +294,8 @@ export default function DashboardPage({ user, onLogout, onSelectCompany }) {
             Array.from({ length: 8 }).map((_, i) => (
               <div key={i} style={styles.skeletonCard} />
             ))
-          ) : filteredCompanies.length > 0 ? (
-            filteredCompanies.map((item) => (
+          ) : filteredDocumentTypeMaster.length > 0 ? (
+            filteredDocumentTypeMaster.map((item) => (
               <div
                 key={item.id}
                 className="dr-card"
@@ -313,12 +311,11 @@ export default function DashboardPage({ user, onLogout, onSelectCompany }) {
                   history.push({
                     pathname: "/documents",
                     state: {
-                      company: {
-                        id: item.id,
-                        name: item.name,
-                        industry: item.industry,
-                        documents: item.documents,
-                      },
+
+                      document: {
+                      documentTypeId: item.id,
+                      documentType: item.name
+                      }
                     },
                   });
                 }}
