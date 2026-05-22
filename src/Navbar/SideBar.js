@@ -72,7 +72,7 @@ const Navigator = styled(Row)`
   position: fixed; 
   align-items: center;
   cursor: pointer;
-  left: ${({ sidebar }) => (sidebar ? '17.6%' : '5%')};
+  left: ${({ sidebar }) => (sidebar ? '17.6%' : '5.0%')};
   transition: left ${({ sidebar }) => (sidebar ? '550ms' : '200ms')};
   z-index: 999; 
   @media (max-width: 600px) {
@@ -219,9 +219,9 @@ function SideBar(props) {
     }
   };
 
-  if (menu.length === 0) {
-    return null; 
-  }
+  // if (menu.length === 0) {
+  //   return null; 
+  // }
   return (
     menu.length ? (<SideMenu onClick={() => dispatch(modalActions.hideModalHandler())}>
 

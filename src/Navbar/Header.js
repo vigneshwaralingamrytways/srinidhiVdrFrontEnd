@@ -19,7 +19,7 @@
 //   display: flex;
 //   align-items: center;
 //   align-contents: center;
- 
+
 //   border-radius: 5px;
 //   margin-left: ${({ sidebar, moduleId }) => (moduleId == 20 ? "1" : !sidebar ? "2%" : "0")};
 //   padding-left:${({ sidebar, moduleId }) => (moduleId == 20 ? "0" : !sidebar ? "2%" : "17.6%")};
@@ -29,9 +29,9 @@
 //     margin-left: ${({ sidebar, moduleId }) => (!sidebar ? ".1%" : "1%")};
 //     width: 45%;
 //   }
-  
-  
- 
+
+
+
 // `;
 
 // const ContainerHeaderWrap = styled(Row)`
@@ -127,8 +127,7 @@ import { useContext } from "react";
 import AuthContext from "../store/auth-context";
 import { useSelector } from "react-redux";
 import { Container, Row, Col } from "react-bootstrap";
-import { useHistory } from 'react-router-dom';
-
+import { useHistory, useLocation } from 'react-router-dom';
 
 const NavWrap = styled(Col)`
   display: flex;
@@ -136,9 +135,12 @@ const NavWrap = styled(Col)`
   align-contents: center;
  
   border-radius: 5px;
-  margin-left: ${({ sidebar, moduleId }) => (moduleId == 20 ? "1" : !sidebar ? "0" : "0")};
-  padding-left:${({ sidebar, moduleId }) => (moduleId == 20 ? "0" : !sidebar ? "0" : "17.6%")};
-  margin-top: 0px;
+  margin-left: ${({ sidebar, moduleId }) => (moduleId == 20 ? "1" : !sidebar ? "0" : "0%")};
+   padding-left:${({ sidebar, showSidebarSpacing }) =>
+    showSidebarSpacing
+      ? (!sidebar ? "5%" : "17.6%")
+      : "0"};
+     margin-top: 0px;
   height: max-content;
   @media (max-width: 600px) {
     margin-left: ${({ sidebar, moduleId }) => (!sidebar ? ".1%" : "1%")};
@@ -174,6 +176,10 @@ align-items: center;
 
 const Header = (props) => {
   const history = useHistory();
+  const location = useLocation();
+  const showSidebarSpacing =
+    location.pathname.includes("/user/search") ||
+    location.pathname.includes("/entry/search");
   const [sidebar, setSidebar] = useState(false);
   const [navimg, setnavimg] = useState(false);
   const moduleId = useSelector((state) => state.sideBar.moduleId);
@@ -212,13 +218,13 @@ const Header = (props) => {
         {isLoggedIn && !moduleId && (
           <NavBar></NavBar>
         )} */}
-        <ContainerHeaderWrap>
-          {isLoggedIn && moduleId > 0 && (
-            <SideBar sidebar={sidebar} onHide={hideSidebar} onIconClick={showSidebar}></SideBar>
-          )}
-          <NavWrap sidebar={sidebar} onClick={hideSidebar} moduleId={moduleId}>
-            {props.children}</NavWrap>
-        </ContainerHeaderWrap>
+      <ContainerHeaderWrap>
+        {isLoggedIn && moduleId > 0 && (
+          <SideBar sidebar={sidebar} onHide={hideSidebar} onIconClick={showSidebar}></SideBar>
+        )}
+        <NavWrap sidebar={sidebar} onClick={hideSidebar} moduleId={moduleId} showSidebarSpacing={showSidebarSpacing}>
+          {props.children}</NavWrap>
+      </ContainerHeaderWrap>
       {/* </IconContext.Provider> */}
     </>
   );

@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import Navbar from "./Navbar";
 import { api, useFetch } from "../../Components/CommonImports/CommonImports";
 import { useHistory } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { moduleActions } from "../../store/module-slice";
+import AuthContext from "../../store/auth-context";
 
 export default function DashboardPage({ user, onLogout }) {
   const { post, del, get, response } = useFetch({ data: [] });
@@ -16,7 +17,7 @@ export default function DashboardPage({ user, onLogout }) {
   const loginUserId = parseFloat(localStorage.getItem("userId"));
   const loginUser = parseFloat(localStorage.getItem("roleId"));
   const moduleId = useSelector((state) => state.sideBar.moduleId);
-
+  const authCtx = useContext(AuthContext)
   // ? SAME API AS SEARCH PAGE
   const loadDataRoomList = async () => {
     setLoading(true);
@@ -30,7 +31,9 @@ export default function DashboardPage({ user, onLogout }) {
       //       userId: loginUserId,
       //       documentTypeId: null,
       //     });
-      const result = await get(api + "/documentTypeMaster/documentTypeMaster")
+      console.log("===", authCtx.userId)
+      const result = await get(api + `/documentTypeMaster/documentTypeMaster/${localStorage.userId}`);
+      console.log("===----------------")
       console.table(result)
       if (result && Array.isArray(result)) {
         const formatted = result.map((item, index) => {
@@ -313,8 +316,8 @@ export default function DashboardPage({ user, onLogout }) {
                     state: {
 
                       document: {
-                      documentTypeId: item.id,
-                      documentType: item.name
+                        documentTypeId: item.id,
+                        documentType: item.name
                       }
                     },
                   });

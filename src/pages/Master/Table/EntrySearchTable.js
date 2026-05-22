@@ -40,14 +40,14 @@ export const EntrySearchTable = (showFormHandler, actions) => {
         </FaIcons.FaFileAlt>
     },
     },
-    {
-      title: 'Form Config',
-      align:'center',
-      render: rowData => {
-        return  <FaIcons.FaFileAlt  onClick={showFormHandler(rowData,actions[1])} style={{ marginLeft: '5px',cursor:"pointer" }}>
-        </FaIcons.FaFileAlt>
-    },
-    },
+    // {
+    //   title: 'Form Config',
+    //   align:'center',
+    //   render: rowData => {
+    //     return  <FaIcons.FaFileAlt  onClick={showFormHandler(rowData,actions[1])} style={{ marginLeft: '5px',cursor:"pointer" }}>
+    //     </FaIcons.FaFileAlt>
+    // },
+    // },
     {
       title: 'User',
       align:'center',

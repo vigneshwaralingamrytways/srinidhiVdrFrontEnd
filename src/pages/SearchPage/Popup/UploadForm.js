@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Navbar from "../Navbar";
 import GlassTable from "../GlassTable";
 import { DocIcon, DocEmoji } from "./DocIcon";
@@ -79,14 +79,52 @@ function CategoryBadge({ label }) {
 
 // --- Add Document Popup -------------------------------------------------------
 function AddDocumentPopup({ folders,
-    subFolders, onClose, onSave, docs }) {
+    subFolders, onClose, onSave, docs, currentDoc, formConfig }) {
+    const { post, response } = useFetch({ data: [] });
     // const uniqueNames = [...new Set(docs.map((d) => d.category).filter(Boolean))];
     // const uniqueSubCats = [...new Set(docs.map((d) => d.subCategory).filter(Boolean))];
+    const [subFolderList, setSubFolderList] = useState([]);
+    const itemFields = [
+        "itemOne", "itemTwo", "itemThree", "itemFour", "itemFive",
+        "itemSix", "itemSeven", "itemEight", "itemNine", "itemTen",
+        "itemEleven", "itemTwelve", "itemThirteen", "itemFourteen", "itemFifteen"
+    ];
     const [form, setForm] = useState({
         category: "",
         subCategory: "",
         createdDate: new Date().toISOString().split("T")[0],
+
+        itemOne: "",
+        itemTwo: "",
+        itemThree: "",
+        itemFour: "",
+        itemFive: "",
+        itemSix: "",
+        itemSeven: "",
+        itemEight: "",
+        itemNine: "",
+        itemTen: "",
+        itemEleven: "",
+        itemTwelve: "",
+        itemThirteen: "",
+        itemFourteen: "",
+        itemFifteen: ""
     });
+    const loadSubFolders = async (folderId) => {
+        try {
+            const data = await post(api + "/subFolderMaster/getListByDocypeAndFolder", { documentTypeId: currentDoc?.documentTypeId, folderId, rand: Math.random() });
+            console.log(" data for subFolder", data)
+            if (response.ok) {
+                setSubFolderList(data);
+            } else {
+                setSubFolderList([]);
+            }
+        } catch (err) {
+            console.log(err);
+            setSubFolderList([]);
+        }
+    };
+
     const [errors, setErrors] = useState({});
 
     const validate = () => {
@@ -102,7 +140,7 @@ function AddDocumentPopup({ folders,
         width: "100%",
         padding: "10px 14px",
         borderRadius: "10px",
-        background: "rgba(255,255,255,0.07)",
+        background: "#1a1a2e",
         border: "1px solid rgba(255,255,255,0.13)",
         color: "#e2e8f0",
         fontSize: "13px",
@@ -177,18 +215,13 @@ function AddDocumentPopup({ folders,
                     <label style={labelStyle}>Category</label>
                     <select
                         value={form.category}
-                        onChange={(e) =>
-                            setForm({
-                                ...form,
-                                category: e.target.value,
-                                subCategory: "",
-                            })
-                        }
+                        onChange={async (e) => { const folderId = e.target.value; setForm({ ...form, category: folderId, subCategory: "" }); await loadSubFolders(folderId); }}
+
                         style={{ ...fieldStyle, cursor: "pointer" }}
                     >
-                        <option value=""> Select </option>
+                        <option value="" style={{ background: "#1a1a2e", color: "#e2e8f0" }}> Select </option>
                         {folders.map((n) => (
-                            <option key={n} value={n} style={{ background: "#1a1a2e" }}>{n}</option>
+                            <option key={n.value} value={n.value} style={{ background: "#1a1a2e" }}>{n.label}</option>
                         ))}
                     </select>
                     {errors.category && <span style={{ color: "#ff6b6b", fontSize: "11px" }}>{errors.category}</span>}
@@ -201,11 +234,16 @@ function AddDocumentPopup({ folders,
                         onChange={(e) => setForm({ ...form, subCategory: e.target.value })}
                         style={{ ...fieldStyle, cursor: "pointer" }}
                     >
-                        <option value=""> Select </option>
+                        <option value="" style={{ background: "#1a1a2e", color: "#e2e8f0" }}> Select </option>
+                        {subFolderList.map((s) => (
+                            <option key={s.subFolderId} value={s.subFolderId}>
+                                {s.subFolderCategoryName}
+                            </option>
+                        ))}
                         {/* {subFolders.map((s) => (
                             <option key={s} value={s} style={{ background: "#1a1a2e" }}>{s}</option>
                         ))} */}
-                        {[
+                        {/* {[
                             ...new Set(
                                 docs
                                     .filter((d) => d.category === form.category)
@@ -219,7 +257,7 @@ function AddDocumentPopup({ folders,
                             >
                                 {s}
                             </option>
-                        ))}
+                        ))} */}
                     </select>
                     {errors.subCategory && <span style={{ color: "#ff6b6b", fontSize: "11px" }}>{errors.subCategory}</span>}
                 </div>
@@ -234,6 +272,16 @@ function AddDocumentPopup({ folders,
                     />
                     {errors.createdDate && <span style={{ color: "#ff6b6b", fontSize: "11px" }}>{errors.createdDate}</span>}
                 </div>
+                {itemFields.map((fieldKey) => {
+                    const customLabel = formConfig?.[fieldKey];
+                    if (!customLabel || customLabel.trim() === "") return null;
+                    return (
+                        <div key={fieldKey} style={{ marginBottom: "14px" }}>
+                            <label style={labelStyle}>{customLabel}</label>
+                            <input type="text" value={form[fieldKey]} onChange={(e) => setForm({ ...form, [fieldKey]: e.target.value })} style={fieldStyle} placeholder={`Enter ${customLabel}...`} />
+                        </div>
+                    );
+                })}
 
                 <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end" }}>
                     <button
@@ -273,7 +321,11 @@ function AddDocumentPopup({ folders,
         </div>
     );
 }
-
+const itemFields = [
+    "itemOne", "itemTwo", "itemThree", "itemFour", "itemFive",
+    "itemSix", "itemSeven", "itemEight", "itemNine", "itemTen",
+    "itemEleven", "itemTwelve", "itemThirteen", "itemFourteen", "itemFifteen"
+];
 // --- Main Component -----------------------------------------------------------
 export default function DocumentsPage({ user, onLogout }) {
     const location = useLocation();
@@ -291,7 +343,7 @@ export default function DocumentsPage({ user, onLogout }) {
     const [searchQuery, setSearchQuery] = useState("");
     const [loading, setLoading] = useState(false);
     const [showAddPopup, setShowAddPopup] = useState(false);
-
+    const [formConfig, setFormConfig] = useState({});
     // -- NEW: search bar toggle state + ref for auto-focus ------------------
     const [searchOpen, setSearchOpen] = useState(false);
     const searchInputRef = useRef(null);
@@ -302,6 +354,17 @@ export default function DocumentsPage({ user, onLogout }) {
             searchInputRef.current.focus();
         }
     }, [searchOpen]);
+    useEffect(() => {
+        if (currentDoc?.documentTypeId) {
+            setDocs([]);
+            setActiveFilter("All");
+            setSearchQuery("");
+            setSearchOpen(false);
+            fetchDocuments(currentDoc.documentTypeId);
+            sessionStorage.setItem("doc", JSON.stringify(currentDoc));
+        }
+    }, [currentDoc?.documentTypeId]); // eslint-disable-line react-hooks/exhaustive-deps
+
 
     // Guard: if doc is missing, redirect back  placed AFTER all hooks
     if (!currentDoc) {
@@ -312,19 +375,43 @@ export default function DocumentsPage({ user, onLogout }) {
     const fetchDocuments = async (documentTypeId) => {
         // if (!documentTypeId) return;
         console.log("--called")
+
         try {
             setLoading(true);
             const result = await post(api + "/documentTransaction/getByDocumentTypeId", {
                 documentTypeId: documentTypeId
             });
+            const resObj = await post(api + "/folderMaster/getListByDocumentTypeId", {
+                documentTypeId: documentTypeId
+            });
+            const configRes = await post(
+                api + "/formConfigMaster/getListByDocumentTypeId",
+                {
+                    documentTypeId: documentTypeId
+                }
+            );
+            console.log("==configs", configRes)
+            if (response.ok && Array.isArray(configRes) && configRes.length > 0) {
+                setFormConfig(configRes[0]);
+            } else {
+                setFormConfig({});
+            }
 
             console.table(result)
-            if (response.ok && Array.isArray(result)) {
-                const filtered = result.filter(
-                    (item) => item?.documentTypeMaster?.documentTypeId === documentTypeId
-                );
 
-                const mapped = filtered.map((item) => ({
+            if (response.ok && Array.isArray(resObj)) {
+
+                const mapped = resObj.map((item) => ({
+                    label: item?.folderCategoryName || "General",
+                    value: item?.folderId
+                }))
+                setFolders(mapped);
+                // setSubFolders([...new Set(mapped.map((d) => d.subCategory))]);
+            }
+            if (response.ok && Array.isArray(result)) {
+
+
+                const mapped = result.map((item) => ({
                     ...item,
 
                     documentName:
@@ -342,8 +429,7 @@ export default function DocumentsPage({ user, onLogout }) {
                 }));
 
                 setDocs(mapped);
-                setFolders([...new Set(mapped.map((d) => d.category))]);
-                setSubFolders([...new Set(mapped.map((d) => d.subCategory))]);
+
             } else {
                 setDocs([]);
             }
@@ -354,17 +440,17 @@ export default function DocumentsPage({ user, onLogout }) {
             setLoading(false);
         }
     };
-
-    useEffect(() => {
-        if (currentDoc?.documentTypeId) {
-            setDocs([]);
-            setActiveFilter("All");
-            setSearchQuery("");
-            setSearchOpen(false);
-            fetchDocuments(currentDoc.documentTypeId);
-            sessionStorage.setItem("doc", JSON.stringify(currentDoc));
-        }
-    }, [currentDoc?.documentTypeId]); // eslint-disable-line react-hooks/exhaustive-deps
+    const getDynamicHeaders = () => {
+        const baseHeaders = ["Document Category", "Doc Sub Category", "Created Date"];
+        itemFields.forEach((fieldKey) => {
+            const titleLabel = formConfig?.[fieldKey];
+            if (titleLabel && titleLabel.trim() !== "") {
+                baseHeaders.push(titleLabel);
+            }
+        });
+        baseHeaders.push("Doc Icon");
+        return baseHeaders;
+    };
 
     const allCategories = ["All", ...new Set(docs.map((d) => d.subCategory || "General"))];
 
@@ -587,8 +673,9 @@ export default function DocumentsPage({ user, onLogout }) {
 
     const handleExcel = async (rowData, fileName) => {
         try {
+            console.log(" val for downoloads", rowData,"file name",fileName)
             const result = await post(api + "/documentTransaction/selectedExcelReport", rowData);
-
+            console.log("res for excel download ", result)
             if (response.ok) {
                 const blob = await response.blob();
                 saveAs(blob, fileName);
@@ -806,52 +893,42 @@ export default function DocumentsPage({ user, onLogout }) {
                     <div style={{ color: "rgba(255,255,255,0.5)" }}>No documents found</div>
                 ) : (
                     <GlassTable
-                        headers={["Document Category", "Doc Sub Category", "Created Date", "Doc Icon"]}
-                        rows={filteredDocs.map((doc) => [
-                            // -- CHANGE 2: doc name is now a clickable link ----------
-                            <span
-                                style={{ display: "flex", gap: "10px", alignItems: "center" }}
-                            >
-                                <DocEmoji type={doc.type} />
-                                <span
-                                    onClick={() => handleOpenDocument(doc)}
-                                    title="Open document"
-                                    style={{
-                                        color: "#e2e8f0",
-                                        fontWeight: 500,
-                                        fontSize: "13px",
-                                        cursor: "pointer",
-                                        textDecoration: "none",
-                                        transition: "color 0.15s",
-                                    }}
-                                    onMouseOver={(e) => {
-                                        e.currentTarget.style.color = "#a5b4fc";
-                                        e.currentTarget.style.textDecoration = "underline";
-                                    }}
-                                    onMouseOut={(e) => {
-                                        e.currentTarget.style.color = "#e2e8f0";
-                                        e.currentTarget.style.textDecoration = "none";
-                                    }}
-                                >
-                                    {doc.category}
+                        headers={getDynamicHeaders()}
+                        rows={filteredDocs.map((doc) => {
+                            const rowCells = [
+                                <span style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                                    <DocEmoji type={doc.type} />
+                                    <span
+                                        onClick={() => handleOpenDocument(doc)}
+                                        style={{ color: "#e2e8f0", fontWeight: 500, fontSize: "13px", cursor: "pointer" }}
+                                    >
+                                        {doc.category}
+                                    </span>
+                                </span>,
+                                <CategoryBadge label={doc.subCategory} />,
+                                <span style={{ color: "rgba(255,255,255,0.45)", fontFamily: "'Courier New', Courier, monospace", fontSize: "12px" }}>
+                                    {formatDate(doc.createdDate)}
                                 </span>
-                            </span>,
-                            <CategoryBadge label={doc.subCategory} />,
-                            <span
-                                style={{
-                                    color: "rgba(255,255,255,0.45)",
-                                    fontFamily: "'Courier New', Courier, monospace",
-                                    fontSize: "12px",
-                                }}
-                            >
-                                {formatDate(doc.createdDate)}
-                            </span>,
-                            <DocIcon type={doc.type} onClick={() => handleOpenDocument(doc)} />,
-                        ])}
+                            ];
+
+                            itemFields.forEach((fieldKey) => {
+                                const titleLabel = formConfig?.[fieldKey];
+                                console.log("names==", titleLabel)
+                                if (titleLabel && titleLabel.trim() !== "") {
+                                    rowCells.push(
+                                        <span style={{ color: "#cbd5e1", fontSize: "13px" }}>
+                                            {doc[fieldKey] || "-"}
+                                        </span>
+                                    );
+                                }
+                            });
+
+                            rowCells.push(<DocIcon type={doc.type} onClick={() => handleOpenDocument(doc)} />);
+                            return rowCells;
+                        })}
                     />
                 )}
             </div>
-
             {showAddPopup && (
                 <AddDocumentPopup
                     folders={folders}
@@ -859,6 +936,9 @@ export default function DocumentsPage({ user, onLogout }) {
                     onClose={() => setShowAddPopup(false)}
                     onSave={handleAddSave}
                     docs={docs}
+                    currentDoc={currentDoc}
+                    formConfig={formConfig}
+
                 />
             )}
         </div>

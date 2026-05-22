@@ -157,7 +157,7 @@ function Contacts() {
         <div className={styles.headerInfo}>
           <div className={styles.companySection}>
             <div className={styles.companyName}>
-              RYTWAYS SOFTWARE TECHNOLOGIES PVT LTD
+              SRINIDHI VDR
             </div>
             <div className={styles.userInfo}>{userName || "User"}</div>
           </div>
@@ -272,6 +272,24 @@ function Contacts() {
     history.push(navigatePath);
   };
 
+  const hideModalHandler = () => {
+    setShowChangePasswordModal(false);
+  };
+  const closeChangePasswordModal = () => setShowChangePasswordModal(false);
+  const resetPassword = async (user) => {
+    console.log("called")
+    const { oldPassword, newPassword } = user
+    const userId = localStorage.getItem('userId');
+    const valuesWithuserId = { password: oldPassword, newPassword: newPassword, userId: userId };
+    const returnObj = await post(api + '/reset-password/change_password', valuesWithuserId)
+    console.log("ret", returnObj)
+    if (response.ok) {
+      hideModalHandler()
+      AlertHandler("Password Reset successfully.", "success")
+    } else {
+      AlertHandler("Password Does Not Match", "danger")
+    }
+  }
   return (
     <div className={styles.page}>
       {waiting && <Spinner />}
@@ -280,7 +298,7 @@ function Contacts() {
       <div className={styles.headerInfo}>
         <div className={styles.companySection}>
           <div className={styles.companyName}>
-            RYTWAYS SOFTWARE TECHNOLOGIES PVT LTD
+            SRINIDHI VDR
           </div>
           <div className={styles.userInfo}>{userName}</div>
         </div>
@@ -346,7 +364,7 @@ function Contacts() {
 
         {/* USER DROPDOWN */}
         <div className={styles.logoutWrapper}>
-          <User size={22} onClick={() => setShowDropdown(!showDropdown)} />
+          <User size={22} className={styles.userIcon} onClick={() => setShowDropdown(!showDropdown)} />
           {showDropdown && (
             <div className={styles.logoutDropdown}>
               <div
@@ -367,10 +385,8 @@ function Contacts() {
           show={showChangePasswordModal}
           onHide={() => setShowChangePasswordModal(false)}
         >
-          <SlidingChangePassword
-            onSubmit={() => { }}
-            setShowChangePasswordModal={() => setShowChangePasswordModal(false)}
-          />
+          <SlidingChangePassword onSubmit={resetPassword} setShowChangePasswordModal={closeChangePasswordModal} />
+
         </CustomModal>
       </div>
     </div>

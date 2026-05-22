@@ -68,41 +68,6 @@ export default function DocumentDetail({ user, onLogout }) {
     // keep track of blob URL to revoke on close
     const blobUrlRef = useRef(null);
 
-    // -- guard --------------------------------------------------------------
-    if (!doc) {
-        history.replace("/documents");
-        return null;
-    }
-    const fetchDownloadHistory = async (index) => {
-        const reportDocId = records[index]?.reportDocId;
-        if (!reportDocId) return;
-
-        try {
-            const payload = {
-                reportDocId: reportDocId.toString(),
-                userId: authCtx.userId.toString(),
-            };
-            const res = await post(api + "/downloadHistory/getDownloadHistory", payload);
-            console.log(" payload for the fetch hist", payload)
-            console.log(" res for  for the fetch hist", res)
-            const updated = [...records];
-            updated[index].downloadHistory = (res || []).map((h) => ({
-                user: authCtx.userName || "Unknown User",
-                date: new Date(h.downloadHistoryTime).toLocaleString("en-IN", {
-                    day: "2-digit",
-                    month: "short",
-                    year: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    hour12: true
-                }),
-            }));
-            setRecords(updated);
-        } catch (err) {
-            console.error("History fetch error:", err);
-        }
-    };
-
     // -----------------------------------------------------------------------
     // API: LOAD RECORDS
     // -----------------------------------------------------------------------
@@ -110,9 +75,9 @@ export default function DocumentDetail({ user, onLogout }) {
         try {
             setLoading(true);
             const result = await post(api + "/documentTransaction/getListByTransacId", {
-                transactionId: doc?.subFolderId,
+                transactionId: doc?.transactionId,
             });
-            const res = await post(api + "/docUserMaster/getListByDocIdAndUserId", { userId: authCtx.userId, documentTypeId: doc?.documentTypeId })
+            const res = await post(api + "/docUserMaster/getListByDocIdAndUserId", { userId: localStorage.userId, documentTypeId: doc?.documentTypeId })
             console.log(" acces data", res, "userID", authCtx.userId, "docTypeId", doc?.documentTypeId)
             if (res) {
                 const allowStatus = res.accesRight === "View / Upload";
@@ -186,6 +151,43 @@ export default function DocumentDetail({ user, onLogout }) {
     }, [doc?.transactionId]);
 
     useEffect(() => { initialLoadData(); fetchDownloadHistory() }, [initialLoadData, authCtx.userId]);
+
+    // -- guard --------------------------------------------------------------
+    if (!doc) {
+        history.replace("/documents");
+        return null;
+    }
+    const fetchDownloadHistory = async (index) => {
+        const reportDocId = records[index]?.reportDocId;
+        if (!reportDocId) return;
+
+        try {
+            const payload = {
+                reportDocId: reportDocId.toString(),
+                userId: authCtx.userId.toString(),
+            };
+            const res = await post(api + "/downloadHistory/getDownloadHistory", payload);
+            console.log(" payload for the fetch hist", payload)
+            console.log(" res for  for the fetch hist", res)
+            const updated = [...records];
+            updated[index].downloadHistory = (res || []).map((h) => ({
+                user: authCtx.userName || "Unknown User",
+                date: new Date(h.downloadHistoryTime).toLocaleString("en-IN", {
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    hour12: true
+                }),
+            }));
+            setRecords(updated);
+        } catch (err) {
+            console.error("History fetch error:", err);
+        }
+    };
+
+
 
     // -----------------------------------------------------------------------
     // API: UPLOAD FILE
@@ -426,7 +428,8 @@ export default function DocumentDetail({ user, onLogout }) {
             const result = await post(api + "/documentTransaction/deleteFile", {
                 reportDocId: rowData.reportDocId
             });
-
+            console.log("del", result)
+            console.log("del val", rowData.reportDocId)
             if (response.ok && result?.status === 1) {
                 setRecords((prev) => prev.filter((_, i) => i !== index));
                 alert("File deleted successfully!");
@@ -863,7 +866,7 @@ export default function DocumentDetail({ user, onLogout }) {
             <div style={styles.body}>
                 <div style={styles.backBtn} onClick={() => history.push("/documents", {
                     document: doc,
-                    documentType:doc?.documentTypeMaster?.documentType
+                    documentType: doc?.documentTypeMaster?.documentType
                 })}>
                     <FaArrowLeft /> Back
                 </div>
