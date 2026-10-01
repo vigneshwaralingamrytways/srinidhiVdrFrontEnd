@@ -51,8 +51,9 @@ function FormConfigForm(props) {
 
   const loadInitialLists = useCallback(async () => {
     // const { ok } = response // BAD, DO NOT DO THIS
+    console.log(" value for fofm configs", props?.selectedItem?.documentTypeId)
     const loadedLists = await post(api + "/formConfigMaster/getListByDocumentTypeId", { documentTypeId: props?.selectedItem?.documentTypeId, rand: Math.random() });
-    console.log(loadedLists)
+    console.log("formConfigs", loadedLists)
     if (response.ok && loadedLists.length > 0) {
       setDefaultValue(loadedLists[0]);
     } else {

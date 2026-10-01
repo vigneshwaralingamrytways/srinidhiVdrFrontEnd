@@ -171,7 +171,7 @@ export default function DocumentDetail({ user, onLogout }) {
         } finally {
             setUploading(false);
         }
-    }; sheets
+    }; 
 
     const handleUpdate = () => {
         const updated = [...records];

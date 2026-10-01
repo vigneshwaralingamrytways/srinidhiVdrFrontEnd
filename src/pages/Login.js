@@ -116,7 +116,7 @@ function Login() {
     if (String(returnObject.roleId )=== "1") {
       history.push("/processModule");   // Admin path
     } else {
-      history.push("/userDashboard");   // User path  change this to your actual route
+      history.push("/search");   // User path  change this to your actual route
     }
 
   } else {

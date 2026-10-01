@@ -21,6 +21,7 @@ import {
 import * as XLSX from "xlsx";
 import { useFetch, api } from "../../../Components/CommonImports/CommonImports";
 import AuthContext from "../../../store/auth-context";
+import { areIntervalsOverlappingWithOptions } from "date-fns/fp";
 
 // --- helpers ----------------------------------------------------------------
 const getFileExtension = (name) => (name || "").split(".").pop().toLowerCase();
@@ -33,9 +34,9 @@ export default function DocumentDetail({ user, onLogout }) {
     const history = useHistory();
     const { post, response, get } = useFetch({ data: [] });
 
-    const company = location.state?.company;
+    // const company = location.state?.company;
     const doc = location.state?.document;
-
+    const [isAllow, setIsAllow] = useState(false);
     // -- upload form state --------------------------------------------------
     const [file, setFile] = useState(null);
     const [remarks, setRemark] = useState("");
@@ -67,41 +68,6 @@ export default function DocumentDetail({ user, onLogout }) {
     // keep track of blob URL to revoke on close
     const blobUrlRef = useRef(null);
 
-    // -- guard --------------------------------------------------------------
-    if (!doc || !company) {
-        history.replace("/documents");
-        return null;
-    }
-    const fetchDownloadHistory = async (index) => {
-        const reportDocId = records[index]?.reportDocId;
-        if (!reportDocId) return;
-
-        try {
-            const payload = {
-                reportDocId: reportDocId.toString(),
-                userId: authCtx.userId.toString(),
-            };
-            const res = await post(api + "/downloadHistory/getDownloadHistory", payload);
-            console.log(" payload for the fetch hist", payload)
-            console.log(" res for  for the fetch hist", res)
-            const updated = [...records];
-            updated[index].downloadHistory = (res || []).map((h) => ({
-                user: authCtx.userName || "Unknown User",
-                date: new Date(h.downloadHistoryTime).toLocaleString("en-IN", {
-                    day: "2-digit",
-                    month: "short",
-                    year: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    hour12: true
-                }),
-            }));
-            setRecords(updated);
-        } catch (err) {
-            console.error("History fetch error:", err);
-        }
-    };
-
     // -----------------------------------------------------------------------
     // API: LOAD RECORDS
     // -----------------------------------------------------------------------
@@ -109,29 +75,61 @@ export default function DocumentDetail({ user, onLogout }) {
         try {
             setLoading(true);
             const result = await post(api + "/documentTransaction/getListByTransacId", {
-                transactionId: doc?.subFolderMaster?.subFolderId,
+                transactionId: doc?.transactionId,
+                ts: Date.now()
             });
+            const res = await post(api + "/docUserMaster/getListByDocIdAndUserId", { userId: localStorage.userId, documentTypeId: doc?.documentTypeId, ts: Date.now() })
+            console.log(" acces data", res, "userID", authCtx.userId, "docTypeId", doc?.documentTypeId)
+            if (res) {
+                const allowStatus = res.accesRight === "View / Upload";
+                setIsAllow(allowStatus);
+                console.log(" acces isAllow", isAllow)
+            }
             if (response.ok && Array.isArray(result)) {
                 const baseRecords = result.map((item) => ({
                     ...item,
+                    docsId: item.reportDocId,
                     name: item.fileName,
                     remarks: item.remarks,
                     comments: [],
                     downloadHistory: [],
                 }));
+                console.log(" basereocrd..", baseRecords)
 
                 setRecords(baseRecords);
 
                 baseRecords.forEach(async (record, index) => {
-                    if (!record.reportDocId) return;
+                    const reportDocId = record.reportDocId;
+                    if (!reportDocId) return;
+                    try {
+                        const commRes = await get(api + `/comments/getComments/${reportDocId}?ts=${Date.now()}`);
+                        setRecords((prev) => {
+                            const newRecords = [...prev];
+                            if (newRecords[index]) {
+                                newRecords[index].comments = (commRes || []).map((c) => {
+                                    const dt = new Date(c.createdOn || new Date());
+                                    return {
+                                        text: c.comments,
+                                        date: dt.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) +
+                                            ", " + dt.toLocaleTimeString("en-GB", { hour12: true }),
+                                    };
+                                });
+                            }
+                            return newRecords;
+                        });
+                    } catch (e) {
+                        console.error(`Comment fetch failed for ${reportDocId}`, e);
+                    }
 
                     try {
                         const payload = {
                             reportDocId: record.reportDocId.toString(),
-                            userId: authCtx.userId.toString(),
+                            ts: Date.now()
+                            // userId: authCtx.userId.toString(),
                         };
 
-                        const res = await post(api + "/downloadHistory/getDownloadHistory", payload);
+                        // const res = await post(api + "/downloadHistory/getDownloadHistory", payload);
+                        const res = await post(api + "/downloadHistory/getFirstViewDetails", payload);
 
                         setRecords((prev) => {
                             const newRecords = [...prev];
@@ -153,9 +151,47 @@ export default function DocumentDetail({ user, onLogout }) {
         } finally {
             setLoading(false);
         }
-    }, [company?.id]);
+    }, [doc?.transactionId]);
 
     useEffect(() => { initialLoadData(); fetchDownloadHistory() }, [initialLoadData, authCtx.userId]);
+
+    // -- guard --------------------------------------------------------------
+    if (!doc) {
+        history.replace("/documents");
+        return null;
+    }
+    const fetchDownloadHistory = async (index) => {
+        const reportDocId = records[index]?.reportDocId;
+        if (!reportDocId) return;
+
+        try {
+            const payload = {
+                reportDocId: reportDocId.toString(),
+                ts: Date.now()
+                // userId: authCtx.userId.toString(),
+            };
+            const res = await post(api + "/downloadHistory/getFirstViewDetails", payload);
+            console.log(" payload for the fetch hist", payload)
+            console.log(" res for  for the fetch hist", res)
+            const updated = [...records];
+            updated[index].downloadHistory = (res || []).map((h) => ({
+                user: h?.user?.userName || h?.userName || "-",
+                date: new Date(h.downloadHistoryTime).toLocaleString("en-IN", {
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    hour12: true
+                }),
+            }));
+            setRecords(updated);
+        } catch (err) {
+            console.error("History fetch error:", err);
+        }
+    };
+
+
 
     // -----------------------------------------------------------------------
     // API: UPLOAD FILE
@@ -167,7 +203,7 @@ export default function DocumentDetail({ user, onLogout }) {
             const formData = new FormData();
             formData.append("file", file);
             formData.append("remarks", remarks);
-            formData.append("transactionId", doc?.subFolderMaster?.subFolderId || 0);
+            formData.append("transactionId", doc?.transactionId || 0);
 
             formData.append("documentType", doc?.name || "General");
             formData.append("folderCategoryName", doc?.folderMaster?.folderCategoryName || "folder");
@@ -222,9 +258,11 @@ export default function DocumentDetail({ user, onLogout }) {
 
         const rowData = records[index];
         try {
-            await post(api + "/documentTransaction/viewFile", {
+            const resViewFile = await post(api + "/documentTransaction/viewFile", {
                 reportDocId: rowData.reportDocId,
+                ts: Date.now()
             });
+            console.log(" resFor view File", resViewFile)
 
             if (response.ok) {
                 const blob = await response.blob();
@@ -242,6 +280,19 @@ export default function DocumentDetail({ user, onLogout }) {
 
                 setViewBlobUrl(url);
                 setViewMimeType(blob.type || "");
+
+                const now = new Date();
+                const istDate = new Date(now.getTime() + 5.5 * 60 * 60 * 1000);
+                await post(api + "/downloadHistory/create", {
+                    reportDocId: rowData.reportDocId.toString(),
+                    userId: authCtx.userId.toString(),
+                    time: istDate.toISOString().replace("Z", ""),
+                    viewOrDownload: "VIEW",
+                    ts: Date.now()
+                });
+
+                await fetchDownloadHistory(index);
+
             }
         } catch (err) {
             console.error("View error:", err);
@@ -287,6 +338,7 @@ export default function DocumentDetail({ user, onLogout }) {
         try {
             const val = {
                 reportDocId: rowData.reportDocId,
+                ts: Date.now()
             }
             const res = await post(api + "/documentTransaction/downloadFile", val);
             console.log(" res for dpowenload==", res)
@@ -300,22 +352,22 @@ export default function DocumentDetail({ user, onLogout }) {
                 a.click();
                 document.body.removeChild(a);
                 window.URL.revokeObjectURL(url);
-                const newEntry = {
-                    user: authCtx.userName || "You",
-                    date: new Date().toLocaleString("en-IN", {
-                        day: "2-digit", month: "short", year: "numeric",
-                        hour: "2-digit", minute: "2-digit", hour12: true,
-                    }),
-                }; setRecords((prev) =>
-                    prev.map((record, i) =>
-                        i === index
-                            ? {
-                                ...record,
-                                downloadHistory: [newEntry, ...record.downloadHistory],  // ? new array
-                            }
-                            : record
-                    )
-                );
+                // const newEntry = {
+                //     user: authCtx.userName || "You",
+                //     date: new Date().toLocaleString("en-IN", {
+                //         day: "2-digit", month: "short", year: "numeric",
+                //         hour: "2-digit", minute: "2-digit", hour12: true,
+                //     }),
+                // }; setRecords((prev) =>
+                //     prev.map((record, i) =>
+                //         i === index
+                //             ? {
+                //                 ...record,
+                //                 downloadHistory: [newEntry, ...record.downloadHistory],   
+                //             }
+                //             : record
+                //     )
+                // );
 
                 const now = new Date();
                 const istDate = new Date(now.getTime() + 5.5 * 60 * 60 * 1000);
@@ -323,7 +375,10 @@ export default function DocumentDetail({ user, onLogout }) {
                     reportDocId: rowData.reportDocId.toString(),
                     userId: authCtx.userId.toString(),
                     time: istDate.toISOString().replace("Z", ""),
+                    viewOrDownload: "DOWNLOAD",
+                    ts: Date.now()
                 });
+                await fetchDownloadHistory(index);
             }
 
         } catch (err) {
@@ -334,10 +389,17 @@ export default function DocumentDetail({ user, onLogout }) {
     // API: FETCH / SAVE COMMENTS
     // -----------------------------------------------------------------------
     const fetchComments = async (index) => {
-        const docsId = records[index]?.docsId;
-        if (!docsId) return;
+        // const docsId = records[index]?.docsId;
+        const currentRecord = records[commentPopup];
+        const docsId = currentRecord?.reportDocId;
+        console.log("Fetching comments for Index:", index, "DocsID:", docsId);
+        if (!docsId) {
+            console.error("docsId is missing for index", index);
+            return;
+        }
         try {
-            const res = await get(api + `/comments/getComments/${docsId}`);
+            const res = await get(api + `/comments/getComments/${docsId}?ts=${Date.now()}`);
+            console.log("comment by docid", res)
             const updated = [...records];
             updated[index].comments = (res || []).map((c) => {
                 const dt = new Date(c.createdOn || new Date());
@@ -356,12 +418,16 @@ export default function DocumentDetail({ user, onLogout }) {
 
     const saveComment = async () => {
         if (!commentText.trim()) return;
-        const docsId = records[commentPopup]?.docsId;
+        const currentRecord = records[commentPopup];
+        const reportDocId = currentRecord?.reportDocId;
+        console.log("curent reord", currentRecord)
         try {
             const res = await post(api + "/comments/saveComments", {
-                docsId,
+                reportDocId: reportDocId,
                 comments: commentText,
+                ts: Date.now()
             });
+            console.log(" saved commenst ", res)
             const updated = [...records];
             const now = new Date();
             updated[commentPopup].comments.push({
@@ -384,9 +450,11 @@ export default function DocumentDetail({ user, onLogout }) {
         const rowData = records[index];
         try {
             const result = await post(api + "/documentTransaction/deleteFile", {
-                reportDocId: rowData.reportDocId
+                reportDocId: rowData.reportDocId,
+                ts: Date.now()
             });
-
+            console.log("del", result)
+            console.log("del val", rowData.reportDocId)
             if (response.ok && result?.status === 1) {
                 setRecords((prev) => prev.filter((_, i) => i !== index));
                 alert("File deleted successfully!");
@@ -425,6 +493,7 @@ export default function DocumentDetail({ user, onLogout }) {
                 deleteFilePath: rowData.deleteFilePath,
                 type: rowData.type,
                 remarks: remarks,
+                ts: Date.now()
             }
             console.log(" valeu for update", updatedPayload)
             const result = await post(api + "/documentTransaction/updateReportDoc", updatedPayload);
@@ -817,11 +886,14 @@ export default function DocumentDetail({ user, onLogout }) {
             <Navbar
                 user={user}
                 onLogout={onLogout}
-                breadcrumb={["Dashboard", company?.name || "Company", doc?.name || "Document"]}
+                breadcrumb={["Dashboard", doc?.name || "Company", doc?.name || "Document"]}
             />
 
             <div style={styles.body}>
-                <div style={styles.backBtn} onClick={() => history.push("/documents")}>
+                <div style={styles.backBtn} onClick={() => history.push("/documents", {
+                    document: doc,
+                    documentType: doc?.documentTypeMaster?.documentType
+                })}>
                     <FaArrowLeft /> Back
                 </div>
 
@@ -829,7 +901,7 @@ export default function DocumentDetail({ user, onLogout }) {
                     <div style={styles.title}>{doc?.name}</div>
 
                     {/* -- UPLOAD FORM ---------------------------------------- */}
-                    <div
+                    {isAllow && (<div
                         style={styles.dropZone}
                         onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
                         onDragLeave={() => setDragActive(false)}
@@ -844,16 +916,16 @@ export default function DocumentDetail({ user, onLogout }) {
                             id="fileInput" type="file" hidden
                             onChange={(e) => setFile(e.target.files[0])}
                         />
-                    </div>
+                    </div>)}
 
-                    <textarea
+                    {isAllow && (<textarea
                         value={remarks}
                         onChange={(e) => setRemark(e.target.value)}
                         placeholder="Enter remarks"
                         style={styles.remarksTextarea}
-                    />
+                    />)}
 
-                    <div style={styles.uploadActions}>
+                    {isAllow && (<div style={styles.uploadActions}>
                         <button style={styles.btnSecondary} onClick={() => { resetForm(); setEditingIndex(null); }}>
                             Cancel
                         </button>
@@ -864,7 +936,7 @@ export default function DocumentDetail({ user, onLogout }) {
                         >
                             {uploading ? "Saving" : editingIndex !== null ? "Update" : "Save"}
                         </button>
-                    </div>
+                    </div>)}
 
                     {/* -- TABLE ---------------------------------------------- */}
                     {loading ? (
@@ -875,10 +947,10 @@ export default function DocumentDetail({ user, onLogout }) {
                         <>
                             <div className="table-scroll-wrapper" style={styles.tableScrollWrapper}>
                                 <GlassTable
-                                    headers={["Doc Name", "Remarks", "View", "Comment", "Download", "History", "Edit", "Delete"]}
+                                    headers={["Doc Name", "Remarks", "View", "Comment", "Download", ...(isAllow ? ["History", "Edit", "Delete"] : [])]}
                                     rows={paginatedRecords.map((r, i) => {
                                         const ai = (currentPage - 1) * recordsPerPage + i;
-                                        return [
+                                        const rowData = [
                                             <span
                                                 title={r.name}
                                                 style={{
@@ -914,35 +986,41 @@ export default function DocumentDetail({ user, onLogout }) {
                                                 style={{ cursor: "pointer", color: "#a5b4fc" }}
                                                 onClick={() => handleDownload(ai)}
                                             />,
-
-                                            <div
-                                                title="View Downloaded history"
-                                                style={{ cursor: "pointer", display: "flex", alignItems: "center" }}
-                                                onClick={() => {
-                                                    setHistoryPopup(ai);
-                                                    fetchDownloadHistory(ai);
-                                                }}
-                                            >
-                                                <FaHistory style={{ color: "#facc15" }} />
-                                                {r.downloadHistory.length > 0 && (
-                                                    <span style={{ ...styles.commentBadge, background: "#facc15", color: "#1a1a2e" }}>
-                                                        {r.downloadHistory.length}
-                                                    </span>
-                                                )}
-                                            </div>,
-
-                                            <FaEdit
-                                                title="Edit remarks"
-                                                style={{ cursor: "pointer", color: "#38bdf8" }}
-                                                onClick={() => setupEdit(ai)}
-                                            />,
-
-                                            <FaTrash
-                                                title="Delete"
-                                                style={{ cursor: "pointer", color: "#ff6b6b" }}
-                                                onClick={() => deleteRecord(ai)}
-                                            />,
                                         ];
+                                        if (isAllow) {
+                                            rowData.push(
+                                                <div
+                                                    title="View Downloaded history"
+                                                    style={{ cursor: "pointer", display: "flex", alignItems: "center" }}
+                                                    onClick={() => {
+                                                        setHistoryPopup(ai);
+                                                        fetchDownloadHistory(ai);
+                                                    }}
+                                                >
+                                                    <FaHistory style={{ color: "#facc15" }} />
+                                                    {r.downloadHistory.length > 0 && (
+                                                        <span style={{ ...styles.commentBadge, background: "#facc15", color: "#1a1a2e" }}>
+                                                            {r.downloadHistory.length}
+                                                        </span>
+                                                    )}
+                                                </div>,
+
+                                                <FaEdit
+                                                    title="Edit remarks"
+                                                    style={{ cursor: "pointer", color: "#38bdf8" }}
+                                                    onClick={() => setupEdit(ai)}
+                                                />,
+
+                                                <FaTrash
+                                                    title="Delete"
+                                                    style={{ cursor: "pointer", color: "#ff6b6b" }}
+                                                    onClick={() => deleteRecord(ai)}
+                                                />,
+                                            );
+                                        }
+
+                                        return rowData;
+
                                     })}
                                 />
                             </div>

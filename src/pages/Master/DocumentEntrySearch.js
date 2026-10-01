@@ -68,7 +68,7 @@ function DocumentEntrySearch(props) {
 
   const loadInitialCustomers = useCallback(async () => {
     // const { ok } = response // BAD, DO NOT DO THIS
-    const initialCusts = await post(api + "/documentTypeMaster/documentTypeMaster", { "documentTypeId": Math.random() });
+    const initialCusts = await get(api + "/documentTypeMaster/documentTypeMaster");
 
     if (response.ok) {
 
