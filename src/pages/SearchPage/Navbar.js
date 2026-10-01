@@ -22,7 +22,7 @@ export default function Navbar() {
   const [showDropdown, setShowDropdown] = useState(false);
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
 
-  const isAdmin = authCtx.roleId == 1 ? true : false;
+  const isAdmin = localStorage.getItem("roleId")== 1 ? true : false;
   const userName = localStorage.getItem("userName");
   const isTargetSearchPage = location.pathname.includes("search");
 

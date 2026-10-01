@@ -76,8 +76,9 @@ export default function DocumentDetail({ user, onLogout }) {
             setLoading(true);
             const result = await post(api + "/documentTransaction/getListByTransacId", {
                 transactionId: doc?.transactionId,
+                ts: Date.now()
             });
-            const res = await post(api + "/docUserMaster/getListByDocIdAndUserId", { userId: localStorage.userId, documentTypeId: doc?.documentTypeId })
+            const res = await post(api + "/docUserMaster/getListByDocIdAndUserId", { userId: localStorage.userId, documentTypeId: doc?.documentTypeId, ts: Date.now() })
             console.log(" acces data", res, "userID", authCtx.userId, "docTypeId", doc?.documentTypeId)
             if (res) {
                 const allowStatus = res.accesRight === "View / Upload";
@@ -101,7 +102,7 @@ export default function DocumentDetail({ user, onLogout }) {
                     const reportDocId = record.reportDocId;
                     if (!reportDocId) return;
                     try {
-                        const commRes = await get(api + `/comments/getComments/${reportDocId}`);
+                        const commRes = await get(api + `/comments/getComments/${reportDocId}?ts=${Date.now()}`);
                         setRecords((prev) => {
                             const newRecords = [...prev];
                             if (newRecords[index]) {
@@ -123,10 +124,12 @@ export default function DocumentDetail({ user, onLogout }) {
                     try {
                         const payload = {
                             reportDocId: record.reportDocId.toString(),
-                            userId: authCtx.userId.toString(),
+                            ts: Date.now()
+                            // userId: authCtx.userId.toString(),
                         };
 
-                        const res = await post(api + "/downloadHistory/getDownloadHistory", payload);
+                        // const res = await post(api + "/downloadHistory/getDownloadHistory", payload);
+                        const res = await post(api + "/downloadHistory/getFirstViewDetails", payload);
 
                         setRecords((prev) => {
                             const newRecords = [...prev];
@@ -164,14 +167,15 @@ export default function DocumentDetail({ user, onLogout }) {
         try {
             const payload = {
                 reportDocId: reportDocId.toString(),
-                userId: authCtx.userId.toString(),
+                ts: Date.now()
+                // userId: authCtx.userId.toString(),
             };
-            const res = await post(api + "/downloadHistory/getDownloadHistory", payload);
+            const res = await post(api + "/downloadHistory/getFirstViewDetails", payload);
             console.log(" payload for the fetch hist", payload)
             console.log(" res for  for the fetch hist", res)
             const updated = [...records];
             updated[index].downloadHistory = (res || []).map((h) => ({
-                user: authCtx.userName || "Unknown User",
+                user: h?.user?.userName || h?.userName || "-",
                 date: new Date(h.downloadHistoryTime).toLocaleString("en-IN", {
                     day: "2-digit",
                     month: "short",
@@ -254,9 +258,11 @@ export default function DocumentDetail({ user, onLogout }) {
 
         const rowData = records[index];
         try {
-            await post(api + "/documentTransaction/viewFile", {
+            const resViewFile = await post(api + "/documentTransaction/viewFile", {
                 reportDocId: rowData.reportDocId,
+                ts: Date.now()
             });
+            console.log(" resFor view File", resViewFile)
 
             if (response.ok) {
                 const blob = await response.blob();
@@ -274,6 +280,19 @@ export default function DocumentDetail({ user, onLogout }) {
 
                 setViewBlobUrl(url);
                 setViewMimeType(blob.type || "");
+
+                const now = new Date();
+                const istDate = new Date(now.getTime() + 5.5 * 60 * 60 * 1000);
+                await post(api + "/downloadHistory/create", {
+                    reportDocId: rowData.reportDocId.toString(),
+                    userId: authCtx.userId.toString(),
+                    time: istDate.toISOString().replace("Z", ""),
+                    viewOrDownload: "VIEW",
+                    ts: Date.now()
+                });
+
+                await fetchDownloadHistory(index);
+
             }
         } catch (err) {
             console.error("View error:", err);
@@ -319,6 +338,7 @@ export default function DocumentDetail({ user, onLogout }) {
         try {
             const val = {
                 reportDocId: rowData.reportDocId,
+                ts: Date.now()
             }
             const res = await post(api + "/documentTransaction/downloadFile", val);
             console.log(" res for dpowenload==", res)
@@ -332,22 +352,22 @@ export default function DocumentDetail({ user, onLogout }) {
                 a.click();
                 document.body.removeChild(a);
                 window.URL.revokeObjectURL(url);
-                const newEntry = {
-                    user: authCtx.userName || "You",
-                    date: new Date().toLocaleString("en-IN", {
-                        day: "2-digit", month: "short", year: "numeric",
-                        hour: "2-digit", minute: "2-digit", hour12: true,
-                    }),
-                }; setRecords((prev) =>
-                    prev.map((record, i) =>
-                        i === index
-                            ? {
-                                ...record,
-                                downloadHistory: [newEntry, ...record.downloadHistory],  // ? new array
-                            }
-                            : record
-                    )
-                );
+                // const newEntry = {
+                //     user: authCtx.userName || "You",
+                //     date: new Date().toLocaleString("en-IN", {
+                //         day: "2-digit", month: "short", year: "numeric",
+                //         hour: "2-digit", minute: "2-digit", hour12: true,
+                //     }),
+                // }; setRecords((prev) =>
+                //     prev.map((record, i) =>
+                //         i === index
+                //             ? {
+                //                 ...record,
+                //                 downloadHistory: [newEntry, ...record.downloadHistory],   
+                //             }
+                //             : record
+                //     )
+                // );
 
                 const now = new Date();
                 const istDate = new Date(now.getTime() + 5.5 * 60 * 60 * 1000);
@@ -355,7 +375,10 @@ export default function DocumentDetail({ user, onLogout }) {
                     reportDocId: rowData.reportDocId.toString(),
                     userId: authCtx.userId.toString(),
                     time: istDate.toISOString().replace("Z", ""),
+                    viewOrDownload: "DOWNLOAD",
+                    ts: Date.now()
                 });
+                await fetchDownloadHistory(index);
             }
 
         } catch (err) {
@@ -375,7 +398,7 @@ export default function DocumentDetail({ user, onLogout }) {
             return;
         }
         try {
-            const res = await get(api + `/comments/getComments/${docsId}`);
+            const res = await get(api + `/comments/getComments/${docsId}?ts=${Date.now()}`);
             console.log("comment by docid", res)
             const updated = [...records];
             updated[index].comments = (res || []).map((c) => {
@@ -402,6 +425,7 @@ export default function DocumentDetail({ user, onLogout }) {
             const res = await post(api + "/comments/saveComments", {
                 reportDocId: reportDocId,
                 comments: commentText,
+                ts: Date.now()
             });
             console.log(" saved commenst ", res)
             const updated = [...records];
@@ -426,7 +450,8 @@ export default function DocumentDetail({ user, onLogout }) {
         const rowData = records[index];
         try {
             const result = await post(api + "/documentTransaction/deleteFile", {
-                reportDocId: rowData.reportDocId
+                reportDocId: rowData.reportDocId,
+                ts: Date.now()
             });
             console.log("del", result)
             console.log("del val", rowData.reportDocId)
@@ -468,6 +493,7 @@ export default function DocumentDetail({ user, onLogout }) {
                 deleteFilePath: rowData.deleteFilePath,
                 type: rowData.type,
                 remarks: remarks,
+                ts: Date.now()
             }
             console.log(" valeu for update", updatedPayload)
             const result = await post(api + "/documentTransaction/updateReportDoc", updatedPayload);
